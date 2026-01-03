@@ -24,8 +24,9 @@ app.post('/vote', (req, res) => {
   res.json({ success: true, message: 'Vote recorded!' });
 });
 
-export default app;
-
+export default function handler(req, res) {
+  app(req, res);
+}
 // Only listen locally
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
