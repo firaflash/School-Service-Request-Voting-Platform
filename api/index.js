@@ -7,6 +7,7 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const PORT = process.env.PORT || 3000;
 
 // Your routes
 app.get('/', (req, res) => {
@@ -24,3 +25,7 @@ app.post('/vote', (req, res) => {
 export default (req, res) => {
   app(req, res);
 };
+
+app.listen(PORT,(req,res)=>{
+    console.log(`Server Running on port https://localhost:${PORT}`);
+})
