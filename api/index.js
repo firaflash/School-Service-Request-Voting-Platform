@@ -1,21 +1,23 @@
-import express from 'express';
-import dotenv from 'dotenv';
+import express from 'express';              // Main web framework
+import path from "path";
+import dotenv from 'dotenv';                 // Load environment variables from .env file
+import { fileURLToPath } from 'url';         // Needed for __dirname in ES modules
 
-dotenv.config();
+dotenv.config();                             // Read .env file and make variables available
 
-const app = express();
+const app = express();                       // Create Express application
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static('../Public'))
+// Middleware
+app.use(express.json());                     // Parse incoming JSON requests
+app.use(express.urlencoded({ extended: true })); // Parse form data (urlencoded)
+app.use(express.static('../Public'));        // Serve static files from ../Public folder
 
-
-
-const PORT = process.env.PORT || 5000;
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename); 
+const frontendPath = path.join(__dirname, '..', 'public');
 
 app.get('/', (req, res) => {
-  res.send('Hello from School Service Request Voting Platform!');
+  res.sendFile(path.join(frontendPath, 'index.html')); // ← frontendPath is undefined!
 });
 
 app.post('/vote', (req, res) => {
@@ -23,11 +25,14 @@ app.post('/vote', (req, res) => {
   res.json({ success: true, message: 'Vote recorded!' });
 });
 
-export default app;
+export default app;                          // Export app (good for testing or modular setup)
 
+const PORT = process.env.PORT || 5000;
 
-if(process.env.NODE_ENV !== 'production'){
-  app.listen(PORT,(req,res)=>{
-    console.log(`Server Running on port  http://localhost:${PORT}`);
-  })
+// Only start server in development mode
+// (in production you usually let host like Render/Vercel/railway start it)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {                 
+    console.log(`Server Running on port http://localhost:${PORT}`);
+  });
 }
