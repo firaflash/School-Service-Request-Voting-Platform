@@ -2,6 +2,8 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { supabase } from './supabase/supabaseClient.js';
+import  databaseRouter  from './supabase/databaseRoute.js'
 
 dotenv.config();
 
@@ -17,15 +19,14 @@ app.use(express.urlencoded({ extended: true }));
 const publicPath = path.join(__dirname, '..', 'Public');
 app.use(express.static(publicPath));
 
-// Optional: log requests to help debug
-// app.use((req, res, next) => {
-//   console.log(`${req.method} ${req.url}`);
-//   next();
-// });
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(publicPath, 'index.html'));
 });
+
+if(supabase) console.log("Supabase initalized successfully ");
+
+
+app.use('/api/dbs', databaseRouter)
 
 app.post('/vote', (req, res) => {
   console.log('Vote received:', req.body);
