@@ -20,7 +20,8 @@ const publicPath = path.join(__dirname, '..', 'Public');
 app.use(express.static(publicPath));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(publicPath, 'index.html'));
+  console.log("at the concert ");
+    res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 if(supabase) console.log("Supabase initalized successfully ");
