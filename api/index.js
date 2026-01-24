@@ -20,7 +20,7 @@ const publicPath = path.join(__dirname, '..', 'Public');
 app.use(express.static(publicPath));
 
 app.get('/', (req, res) => {
-  console.log("at the concert ");
+  console.log("at the concert 🤝");
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
