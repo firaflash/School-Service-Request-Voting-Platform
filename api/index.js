@@ -10,11 +10,11 @@ const app = express();                       // Create Express application
 // Middleware
 app.use(express.json());                     // Parse incoming JSON requests
 app.use(express.urlencoded({ extended: true })); // Parse form data (urlencoded)
-app.use(express.static('../Public'));        // Serve static files from ../Public folder
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename); 
+const __dirname = path.dirname(__filename);
 const frontendPath = path.join(__dirname, '..', 'Public');
+app.use('/Public', express.static(frontendPath));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html')); // ← frontendPath is undefined!
