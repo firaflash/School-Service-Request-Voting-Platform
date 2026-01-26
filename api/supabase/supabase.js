@@ -1,15 +1,20 @@
 import { supabase } from './supabaseClient.js';
 
 export  const uploadPost =  async (req,res) =>{
-    const content = req.body;
-    console.log(content);
+    // const content = req.body;
+    const content = {
+        content:"This is the first yapping sessios stuff that's done",
+        category:"Maintenance",
+        client_key:"WIN-333"
+    }
     try{
         const { data , err} = supabase
         .from('requests')
         .insert(content)
-        .select();
+        // .select();
 
         console.log(data? data : "nothing uploaded ");
+        console.log(err ? err : "No Error");
 
     }catch(err){
         console.log("Error occured ",err);
