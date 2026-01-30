@@ -1,6 +1,8 @@
 import { supabase } from './supabaseClient.js';
 export const uploadPost = async (req, res) => {
   try {
+    // Now req.body should have content, category, client_key
+    // req.file will be present only if a file was sent
     const { content, category, client_key } = req.body;
 
     if (!content || !client_key) {
@@ -9,10 +11,11 @@ export const uploadPost = async (req, res) => {
       });
     }
 
-    // Optional image
     let photo_path = null;
+
+    // req.file exists only when a file was uploaded
     if (req.file) {
-      photo_path = await uploadImageToStorage(req.image);
+      photo_path = await uploadImageToStorage(req.file);   // ← req.file, not req.image
       if (!photo_path) {
         return res.status(500).json({ error: 'Image upload failed' });
       }
@@ -22,7 +25,8 @@ export const uploadPost = async (req, res) => {
       content,
       category: category || 'Other',
       client_key,
-      photo_path, 
+      photo_path,
+      // created_at: new Date().toISOString(),   // ← Supabase can auto-set if column has default
     };
 
     const { data, error } = await supabase
@@ -32,7 +36,7 @@ export const uploadPost = async (req, res) => {
       .single();
 
     if (error) {
-      console.error(error);
+      console.error('Supabase insert error:', error);
       return res.status(400).json({
         error: 'Failed to create request',
         details: error.message,
@@ -42,11 +46,10 @@ export const uploadPost = async (req, res) => {
     res.status(201).json(data);
 
   } catch (err) {
-    console.error(err);
+    console.error('uploadPost error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
-
 /**
  * Uploads file to Supabase Storage and returns public URL
  * @param {import('multer').Express.Multer.File} file
@@ -54,30 +57,28 @@ export const uploadPost = async (req, res) => {
  */
 async function uploadImageToStorage(file) {
   try {
-    // Generate unique filename (avoid overwrites)
-    const fileExt = file.originalname.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-    const filePath = `requests/${fileName}`; // folder inside bucket
+    const fileExt = file.originalname.split('.').pop() || 'jpg';
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${fileExt}`;
+    const filePath = `requests/${fileName}`;
 
-    // Upload using .upload()
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('publicImg')                     // your bucket name
-      .upload(filePath, file.buffer, {       // ← use buffer!
+      .from('Request_Img')  
+      .upload(filePath, file.buffer, {
         contentType: file.mimetype,
-        upsert: false,                       // don't overwrite if same name
+        upsert: false,
+        cacheControl: '3600',
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      console.error('Supabase storage upload error:', uploadError);
       return null;
     }
 
-    // Get public URL (if bucket is public)
     const { data: urlData } = supabase.storage
-      .from('publicImg')
+      .from('Request_Img')
       .getPublicUrl(filePath);
 
-    return urlData.publicUrl;  // e.g. https://your-project.supabase.co/storage/v1/object/public/publicImg/requests/...
+    return urlData.publicUrl || null;
 
   } catch (err) {
     console.error('Image upload exception:', err);
@@ -157,24 +158,40 @@ export const fetchPost = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch posts' });
   }
 };
+export const voteForPost = async (req, res) => {
+  const { request_id, vote_type, client_key } = req.body;
 
-export const voteForPost = async (req , res )=>{
-    const voteData = {
-        request_id: 1,
-        client_key: "MOB-CHR-22",
-        vote_type: 1,
-    }
-    try{
-        const { data , err } = await supabase
+  // validate vote_type
+  if (![1, -1, 0].includes(vote_type)) {
+    return res.status(400).json({ error: "Invalid vote" });
+  }
+
+  try {
+    if (vote_type === 0) {
+      // Remove the vote if it exists
+      await supabase
         .from('votes')
-        .upsert(voteData)
-        .select()
-
-    }catch(err){
-        console.log("Error Found " , err);
+        .delete()
+        .eq('request_id', request_id)
+        .eq('client_key', client_key);
+    } else {
+      // Insert or update vote
+      await supabase
+        .from('votes')
+        .upsert(
+          { request_id, client_key, vote_type },
+          { onConflict: 'request_id,client_key' } // matches UNIQUE constraint
+        );
     }
-    res.json("Vote Table Resposne");
-}
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Voting failed' });
+  }
+};
+
+
 const fetchVotes =  async () =>{
     try{
         const { data ,error } = await supabase
