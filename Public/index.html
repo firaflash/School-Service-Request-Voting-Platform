@@ -5,13 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hilcoe School Service Request Platform</title>
-    <link href="./bootstrap.min.css" rel="stylesheet">
+    <link href="bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css">
-    <link rel="icon" href="./Icons/favicon.svg" type="image/svg+xml">
-    <script defer src="/_vercel/insights/script.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
 </head>
 
 <body class="bg-light">
@@ -47,7 +46,7 @@
                     <li class="nav-item d-lg-none"><a class="nav-link text-white pl-3" href="#"
                             data-category="Academic"><i class="bi bi-book me-2"></i>Academic</a></li>
                     <li class="nav-item d-lg-none"><a class="nav-link text-white pl-3" href="#"
-                            data-category="Facilities"><i class="bi bi-building me-2"></i>Facilities</a></li>
+                            data-category="Facility"><i class="bi bi-building me-2"></i>Facility</a></li>
                     <li class="nav-item d-lg-none"><a class="nav-link text-white pl-3" href="#"
                             data-category="Social"><i class="bi bi-people me-2"></i>Social</a></li>
                     <li class="nav-item d-lg-none"><a class="nav-link text-white pl-3" href="#" data-category="Other"><i
@@ -63,7 +62,7 @@
 
             <!-- Left Sidebar -->
             <div class="col-md-3 d-none d-md-block">
-                <div class="card border-0 shadow-sm rounded-3">
+                <div class="card border-0 shadow-sm rounded-3 sidebar-sticky">
                     <div class="card-body">
                         <h6 class="text-uppercase text-muted small fw-bold mb-3">Feeds</h6>
                         <ul class="list-unstyled mb-0">
@@ -79,7 +78,7 @@
                             <li><a href="#" class="text-decoration-none d-block py-2 px-3 text-secondary rounded mb-1"
                                     data-category="Academic"><i class="bi bi-book me-2"></i>Academic</a></li>
                             <li><a href="#" class="text-decoration-none d-block py-2 px-3 text-secondary rounded mb-1"
-                                    data-category="Facilities"><i class="bi bi-building me-2"></i>Facilities</a></li>
+                                    data-category="Facility"><i class="bi bi-building me-2"></i>Facility</a></li>
                             <li><a href="#" class="text-decoration-none d-block py-2 px-3 text-secondary rounded mb-1"
                                     data-category="Social"><i class="bi bi-people me-2"></i>Social</a></li>
                             <li><a href="#" class="text-decoration-none d-block py-2 px-3 text-secondary rounded mb-1"
@@ -91,33 +90,35 @@
 
             <!-- Main Feed -->
             <div class="col-md-7 col-lg-6">
-
-                <!-- Create Post Input -->
-                <div class="card border-0 shadow-sm rounded-3 mb-3">
-                    <div class="card-body d-flex align-items-center p-3">
-                        <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center text-white"
-                            style="width: 38px; height: 38px;">
-                            <i class="bi bi-person-fill"></i>
+                <!-- Sticky Header for Feed Controls -->
+                <div class="sticky-top-wrapper sticky-feed-header">
+                    <!-- Create Post Input -->
+                    <div class="card border-0 shadow-sm rounded-3 mb-3">
+                        <div class="card-body d-flex align-items-center p-3">
+                            <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center text-white"
+                                style="width: 38px; height: 38px;">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <input type="text" class="form-control bg-light border-0 rounded-pill h-100 py-2"
+                                placeholder="Start a request..." data-bs-toggle="modal"
+                                data-bs-target="#createRequestModal" readonly style="cursor: pointer;">
                         </div>
-                        <input type="text" class="form-control bg-light border-0 rounded-pill h-100 py-2"
-                            placeholder="Start a request..." data-bs-toggle="modal" data-bs-target="#createRequestModal"
-                            readonly style="cursor: pointer;">
                     </div>
-                </div>
 
-                <!-- Sorting Controls -->
-                <div class="d-flex align-items-center mb-3">
-                    <div class="btn-group" role="group">
-                        <button type="button"
-                            class="btn btn-light border-0 rounded-pill px-3 fw-bold text-primary active"
-                            id="sort-recent">
-                            <i class="bi bi-clock me-1"></i> New
-                        </button>
-                        <button type="button"
-                            class="btn btn-light border-0 rounded-pill px-3 fw-bold text-secondary ms-2"
-                            id="sort-votes">
-                            <i class="bi bi-fire me-1"></i> Top
-                        </button>
+                    <!-- Sorting Controls -->
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="btn-group" role="group">
+                            <button type="button"
+                                class="btn btn-light border-0 rounded-pill px-3 fw-bold text-primary active"
+                                id="sort-recent">
+                                <i class="bi bi-clock me-1"></i> New
+                            </button>
+                            <button type="button"
+                                class="btn btn-light border-0 rounded-pill px-3 fw-bold text-secondary ms-2"
+                                id="sort-votes">
+                                <i class="bi bi-fire me-1"></i> Top
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -125,18 +126,11 @@
                 <div id="feed-container">
                     <!-- Posts will be injected here by JS -->
                 </div>
-
-                <!-- Loading Spinner / Empty State -->
-                <div id="loading-spinner" class="text-center py-5 d-none">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
             </div>
 
             <!-- Right Sidebar (Info) -->
             <div class="col-md-3 d-none d-lg-block">
-                <div class="card border-0 shadow-sm rounded-3 stick-top" style="top: 80px;">
+                <div class="card border-0 shadow-sm rounded-3 sidebar-sticky">
                     <div class="card-body">
                         <h5 class="card-title fw-bold">About CampusVoice</h5>
                         <p class="card-text small text-secondary">A community-driven platform for students to voice
@@ -168,9 +162,8 @@
                                 required>
                                 <option value="" disabled selected>Choose a category</option>
                                 <option value="Academic">Academic</option>
-                                <option value="Maintenance">Maintenance</option>
                                 <option value="Facility">Facility</option>
-                                <option value="IT">IT</option>
+                                <option value="Social">Social</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
@@ -179,10 +172,10 @@
                                 placeholder="What's on your mind?" required></textarea>
                         </div>
                         <div class="mb-3">
-                            <label for="requestMedia" class="form-label text-muted small fw-bold ms-1">Attach Image or
-                                Video (Optional)</label>
+                            <label for="requestMedia" class="form-label text-muted small fw-bold ms-1">Attach
+                                Image</label>
                             <input class="form-control border-0 bg-light rounded-3" type="file" id="requestMedia"
-                                accept="image/*,video/*">
+                                accept="image/*">
                         </div>
                         <div class="d-flex justify-content-end">
                             <button type="button" class="btn btn-light rounded-pill px-4 me-2 fw-bold"
@@ -196,6 +189,7 @@
     </div>
 
     <script src="bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
+    <script src="test.js"></script>
 </body>
+
 </html>
