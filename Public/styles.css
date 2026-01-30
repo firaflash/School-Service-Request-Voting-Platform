@@ -37,38 +37,82 @@ body {
     border-color: #898989;
 }
 
+.voting-sidebar {
+    width: 48px;
+    flex-shrink: 0;
+    background-color: #f8f9fa;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.voting-sidebar.upvoted {
+    background-color: rgba(113, 147, 255, 0.15);
+    /* Increased opacity */
+    border-left: 3px solid #7193ff;
+    /* Accent border */
+}
+
+.voting-sidebar.downvoted {
+    background-color: rgba(255, 69, 0, 0.15);
+    /* Increased opacity */
+    border-left: 3px solid #ff4500;
+    /* Accent border */
+}
+
 .vote-btn {
     border: none;
     background: transparent;
-    color: var(--text-secondary);
-    font-size: 1.2rem;
-    padding: 2px 5px;
+    color: #878a8c;
+    /* Standard meta text color */
+    font-size: 1.5rem;
+    padding: 6px;
     cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
+    border-radius: 6px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .vote-btn:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.08);
+    /* Darker hover */
+}
+
+.vote-btn:active {
+    transform: scale(0.9);
 }
 
 .vote-btn.upvote:hover,
 .vote-btn.upvote.active {
-    color: var(--accent-orange);
-    background-color: rgba(255, 69, 0, 0.1);
+    color: #7193ff !important;
+    /* Swapped to Blue */
+    background-color: rgba(113, 147, 255, 0.12);
+    /* Darker & Swapped */
 }
 
 .vote-btn.downvote:hover,
 .vote-btn.downvote.active {
-    color: var(--accent-blue);
-    background-color: rgba(113, 147, 255, 0.1);
+    color: #ff4500 !important;
+    /* Swapped to Orange/Red */
+    background-color: rgba(255, 69, 0, 0.12);
+    /* Darker & Swapped */
 }
 
 .vote-count {
-    font-weight: 700;
-    font-size: 0.9rem;
-    margin: 4px 0;
-    color: var(--text-primary);
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: #1a1a1b;
+    min-width: 32px;
+    text-align: center;
+    user-select: none;
 }
 
 /* Post Content */

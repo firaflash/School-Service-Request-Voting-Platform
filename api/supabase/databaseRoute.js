@@ -1,13 +1,28 @@
 import { Router } from "express";
-import { uploadPost , deletePost , updatePost , fetchPost, voteForPost} from './supabase.js'
+import multer from "multer";
+import {
+  uploadPost,
+  deletePost,
+  updatePost,
+  fetchPost,
+  voteForPost
+} from "./supabase.js";
 
+const router = Router();
 
-const router =  Router();
+/* ---------- Multer config ---------- */
+const storage = multer.memoryStorage();
 
-router.post('/upload',uploadPost);
-router.post('/vote',voteForPost);
-router.delete('/delete',deletePost);
-router.put('/update',updatePost);
-router.get('/fetch',fetchPost)
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
+/* ---------- Routes ---------- */
+router.post("/upload", upload.single("image"), uploadPost);
+router.post("/vote", voteForPost);
+router.put("/comment", updatePost);
+router.delete("/delete", deletePost);
+router.get("/fetch", fetchPost);
 
 export default router;

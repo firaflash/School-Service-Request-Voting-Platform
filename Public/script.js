@@ -63,47 +63,51 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function fetchRequestsFromServer() {
     try {
-      const res = await fetch("/api/requests");
+      const res = await fetch("/api/dbs/fetch");
       if (!res.ok) throw new Error("Server error");
+
       const data = await res.json();
-      if (Array.isArray(data.requests)) {
+
+      if (Array.isArray(data)) {
         isUsingDemoData = false;
-        return data.requests;
-      } else {
-        throw new Error("Invalid format");
+        console.log(data);
+        return data;
       }
+
+      throw new Error("Invalid format");
     } catch (err) {
       console.warn("Using sample data due to error:", err);
       isUsingDemoData = true;
-      alert("Offline mode: Using sample data. Changes will not be saved.");
       return [...sample];
     }
   }
 
-  async function createRequestOnServer(newRequest) {
-    if (isUsingDemoData) {
-      requests.unshift(newRequest);
-      renderFeed(getCurrentSort());
-      return newRequest;
-    }
 
-    const payload = {
-      content: newRequest.content,
-      category: newRequest.category,
-      photo_path: newRequest.photo_path,
-      client_key: clientKey,
-    };
 
-    const res = await fetch("/api/requests/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+async function createRequestOnServer(formData) {
+    try {
+        const response = await fetch("/api/dbs/upload", {
+            method: "POST",
+            body: formData
+            // IMPORTANT: do NOT set Content-Type header when using FormData
+            // Browser automatically sets multipart/form-data + boundary
+        });
 
-    if (!res.ok) throw new Error("Create failed");
-    const saved = await res.json();
-    return saved.request;
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => "No error message");
+            throw new Error(`Server error ${response.status} - ${errorText}`);
+        }
+
+        const savedRequest = await response.json();
+        return savedRequest;
+
+    } catch (err) {
+        console.error("Failed to create request on server:", err);
+        throw err; // Let the caller handle the alert / UI feedback
   }
+
+}
+
 
   async function updateRequestOnServer(updatedRequest) {
     if (isUsingDemoData) {
@@ -309,42 +313,92 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // ─── Action Handlers ─────────────────────────────────────────────
 
-  window.handleVote = async function (id, direction) {
-    const reqIndex = requests.findIndex((r) => r.id === id);
-    if (reqIndex === -1) return;
+window.handleVote = function (requestId, direction) {   // direction = 1 (up) or -1 (down)
+  const index = requests.findIndex(r => r.id === requestId);
+  if (index === -1) return;
 
-    const req = { ...requests[reqIndex] };
-    const votes = { ...req.votes };
+  const request = requests[index];
+  const previousState = structuredClone(request);           // for rollback
 
-    if (votes.userVote === direction) {
-      if (direction === 1) votes.up--;
-      else votes.down--;
-      votes.userVote = 0;
-    } else {
-      if (votes.userVote === 1) votes.up--;
-      else if (votes.userVote === -1) votes.down--;
+  // ── Calculate new local vote state ────────────────────────────────
+  let { up, down, userVote } = request.votes;
 
-      if (direction === 1) votes.up++;
-      else votes.down++;
-      votes.userVote = direction;
-    }
+  if (userVote === direction) {
+    // Already voted this way → remove vote
+    if (direction === 1) up--;
+    else down--;
+    userVote = 0;
+  } else {
+    // Remove previous vote if any
+    if (userVote === 1) up--;
+    if (userVote === -1) down--;
 
-    votes.up = Math.max(0, votes.up);
-    votes.down = Math.max(0, votes.down);
-    votes.score = votes.up - votes.down;
+    // Apply new vote
+    if (direction === 1) up++;
+    else down++;
 
-    req.votes = votes;
+    userVote = direction;
+  }
 
-    try {
-      await updateRequestOnServer(req);
-      if (!isUsingDemoData) {
-        requests[reqIndex] = req;
-        renderFeed(getCurrentSort());
-      }
-    } catch (err) {
-      alert("Vote failed. Please try again.");
-    }
+  // Prevent negative counts (defensive)
+  up   = Math.max(0, up);
+  down = Math.max(0, down);
+
+  const newVotes = {
+    up,
+    down,
+    score: up - down,
+    userVote
   };
+
+  // Optimistic update
+  requests[index] = {
+    ...request,
+    votes: newVotes
+  };
+
+  renderFeed(getCurrentSort());
+
+  // ── Send to server (send the *intended final state* for user) ─────
+  voteOnServer({
+    request_id: requestId,
+    vote_type: userVote           // 1, -1, or 0 (remove)
+  })
+    .catch(err => {
+      console.error('Vote failed:', err);
+      // Rollback
+      requests[index] = previousState;
+      renderFeed(getCurrentSort());
+      alert('Could not save your vote. Reverted change.');
+    });
+};
+
+
+const voteOnServer = async ({ request_id, vote_type }) => {
+  if (!clientKey) {
+    throw new Error('clientKey is missing – cannot vote');
+  }
+
+  const response = await fetch('/api/dbs/vote', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      request_id,
+      vote_type,
+      client_key: clientKey        // consistent naming
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Server error ${response.status}`);
+  }
+
+  return response.json();
+};
+
 
   window.handleShare = function (text) {
     const shareText = `Check out this request: "${text}" - via CampusVoice`;
@@ -413,120 +467,65 @@ document.addEventListener("DOMContentLoaded", async () => {
   requestForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const category = document.getElementById("requestCategory").value;
-    const content = document.getElementById("requestContent").value;
-    const mediaInput = document.getElementById("requestMedia");
-    const file = mediaInput.files ? mediaInput.files[0] : null;
+    const contentEl   = document.getElementById("requestContent");
+    const categoryEl  = document.getElementById("requestCategory");
+    const fileInput   = document.getElementById("requestMedia");
 
-    let photoPath = null;
-    if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        if (
-          !confirm(
-            `File is large (${(file.size / 1024 / 1024).toFixed(1)}MB). Continue?`,
-          )
-        ) {
-          return;
-        }
-      }
+    const content  = contentEl.value.trim();
+    const category = categoryEl.value;
+    const file     = fileInput.files?.[0] ?? null;
 
-      photoPath = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+    // ── Basic client-side validation ─────────────────────────────────────
+    if (!content) {
+        alert("Please write something in the description");
+        contentEl.focus();
+        return;
     }
 
-    const newRequest = {
-      id: Date.now(),
-      content,
-      category,
-      created_at: new Date().toISOString(),
-      votes: { up: 0, down: 0, score: 0, userVote: 0 },
-      photo_path: photoPath,
-      client_key: clientKey,
-      comments: [],
-    };
+    if (!category) {
+        alert("Please select a category");
+        categoryEl.focus();
+        return;
+    }
+
+    // Optional: warn about large files
+    if (file && file.size > 5 * 1024 * 1024) {   // 5 MB example limit
+        if (!confirm(`File is ${(file.size / 1024 / 1024).toFixed(1)} MB.\nUpload anyway?`)) {
+            return;
+        }
+    }
+
+    // ── Prepare multipart/form-data (this is what multer expects) ────────
+    const formData = new FormData();
+
+    formData.append("content",    content);
+    formData.append("category",   category || "Other");
+    formData.append("client_key", clientKey);           // ← make sure clientKey is defined!
+
+    if (file) {
+        formData.append("image", file);                 // ← multer .single("image") or .array()
+        // Alternative names people commonly use: "file", "media", "attachment", "upload"
+    }
 
     try {
-      const savedRequest = await createRequestOnServer(newRequest);
-      if (!isUsingDemoData) {
-        requests.unshift(savedRequest);
-        renderFeed(getCurrentSort());
-      }
-      requestForm.reset();
-      bootstrap.Modal.getInstance(
-        document.getElementById("createRequestModal"),
-      ).hide();
-      sortRecentBtn.click();
+        const savedRequest = await createRequestOnServer(formData);
+
+        if (!isUsingDemoData) {
+            requests.unshift(savedRequest);
+            renderFeed(getCurrentSort());
+        }
+
+        requestForm.reset();
+        bootstrap.Modal.getInstance(document.getElementById("createRequestModal")).hide();
+
     } catch (err) {
-      alert("Failed to post your request.");
+        console.error("Create request failed", err);
+        alert("Failed to post your request. Please try again.");
     }
-  });
-
-  // ─── Sorting & Filtering ─────────────────────────────────────────
-
-  sortRecentBtn.addEventListener("click", () => {
-    sortRecentBtn.classList.add("active", "text-primary");
-    sortRecentBtn.classList.remove("text-secondary");
-    sortVotesBtn.classList.remove("active", "text-primary");
-    sortVotesBtn.classList.add("text-secondary");
-    renderFeed("recent");
-  });
-
-  sortVotesBtn.addEventListener("click", () => {
-    sortVotesBtn.classList.add("active", "text-primary");
-    sortVotesBtn.classList.remove("text-secondary");
-    sortRecentBtn.classList.remove("active", "text-primary");
-    sortRecentBtn.classList.add("text-secondary");
-    renderFeed("votes");
-  });
-
-  const categoryLinks = document.querySelectorAll(
-    '.category-filter a, .navbar-nav a[data-category], .navbar-nav a[data-type="feed"], .list-unstyled a[data-type="feed"]',
-  );
-
-  categoryLinks.forEach((link) => {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      categoryLinks.forEach((l) => {
-        l.classList.remove(
-          "active-sidebar-link",
-          "fw-bold",
-          "text-primary",
-          "bg-light",
-        );
-        l.classList.add("text-secondary");
-      });
-      const clicked = e.target.closest("a");
-      if (clicked) {
-        clicked.classList.remove("text-secondary");
-        clicked.classList.add("active-sidebar-link");
-      }
-
-      const category = link.dataset.category;
-      const type = link.dataset.type;
-      const text = link.innerText;
-
-      if (type === "feed" || (!category && text)) {
-        currentCategory = "all";
-        if (text.includes("Popular")) sortVotesBtn.click();
-        else sortRecentBtn.click();
-      } else if (category) {
-        currentCategory = category;
-        renderFeed(getCurrentSort());
-      }
-
-      const nav = document.getElementById("navbarNav");
-      if (nav?.classList.contains("show")) {
-        bootstrap.Collapse.getInstance(nav)?.hide();
-      }
-    });
-  });
-
+});
   // ─── Initial Load ────────────────────────────────────────────────
 
   requests = await fetchRequestsFromServer();
+
   renderFeed();
 });

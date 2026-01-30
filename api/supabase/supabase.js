@@ -1,60 +1,55 @@
 import { supabase } from './supabaseClient.js';
-
 export const uploadPost = async (req, res) => {
   try {
-    // 1. Get text fields from body
-    const { description, category, client_key } = req.body;
+    // Now req.body should have content, category, client_key
+    // req.file will be present only if a file was sent
+    const { content, category, client_key } = req.body;
 
-    if (!description || !client_key) {
-      return res.status(400).json({ error: 'Missing required fields: description and client_key' });
+    if (!content || !client_key) {
+      return res.status(400).json({
+        error: 'Missing required fields: content and client_key',
+      });
     }
 
-    // 2. Handle optional file upload
     let photo_path = null;
 
-    if (req.file) {  // multer attached the file here
-      photo_path = await uploadImageToStorage(req.file);
+    // req.file exists only when a file was uploaded
+    if (req.file) {
+      photo_path = await uploadImageToStorage(req.file);   // ← req.file, not req.image
       if (!photo_path) {
         return res.status(500).json({ error: 'Image upload failed' });
       }
     }
 
-    // 3. Prepare data for DB insert
-    const content = {
-      description,           // adjust column names to match your table exactly
-      category: category || 'General',
+    const insertData = {
+      content,
+      category: category || 'Other',
       client_key,
-      photo_path,            // now contains the public URL or signed path
-      // created_at auto-handled by DB default
+      photo_path,
+      // created_at: new Date().toISOString(),   // ← Supabase can auto-set if column has default
     };
 
-    // 4. Insert into DB
     const { data, error } = await supabase
-      .from('Request')       // ← case-sensitive! Check your table name
-      .insert(content)
-      .select();
+      .from('requests')
+      .insert(insertData)
+      .select()
+      .single();
 
     if (error) {
-      console.error('DB insert error:', error.message);
+      console.error('Supabase insert error:', error);
       return res.status(400).json({
         error: 'Failed to create request',
         details: error.message,
       });
     }
 
-    console.log('Success:', data);
-
-    return res.status(201).json({
-      message: 'Request created successfully',
-      request: data[0],  // inserted row
-    });
+    res.status(201).json(data);
 
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return res.status(500).json({ error: 'Server error', details: err.message });
+    console.error('uploadPost error:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 };
-
 /**
  * Uploads file to Supabase Storage and returns public URL
  * @param {import('multer').Express.Multer.File} file
@@ -62,30 +57,28 @@ export const uploadPost = async (req, res) => {
  */
 async function uploadImageToStorage(file) {
   try {
-    // Generate unique filename (avoid overwrites)
-    const fileExt = file.originalname.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-    const filePath = `requests/${fileName}`; // folder inside bucket
+    const fileExt = file.originalname.split('.').pop() || 'jpg';
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${fileExt}`;
+    const filePath = `requests/${fileName}`;
 
-    // Upload using .upload()
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('publicImg')                     // your bucket name
-      .upload(filePath, file.buffer, {       // ← use buffer!
+      .from('Request_Img')  
+      .upload(filePath, file.buffer, {
         contentType: file.mimetype,
-        upsert: false,                       // don't overwrite if same name
+        upsert: false,
+        cacheControl: '3600',
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      console.error('Supabase storage upload error:', uploadError);
       return null;
     }
 
-    // Get public URL (if bucket is public)
     const { data: urlData } = supabase.storage
-      .from('publicImg')
+      .from('Request_Img')
       .getPublicUrl(filePath);
 
-    return urlData.publicUrl;  // e.g. https://your-project.supabase.co/storage/v1/object/public/publicImg/requests/...
+    return urlData.publicUrl || null;
 
   } catch (err) {
     console.error('Image upload exception:', err);
@@ -100,48 +93,114 @@ export const deletePost = async (req,res) =>{
 export const updatePost = async (req,res) =>{
     
 }
-export const fetchPost = async (req,res) =>{
-    const Resposne ={
-        "id": 12,
-        "content": "We need more power outlets in the library study area.",
-        "category": "Facilities",
-        "created_at": "2026-01-24T18:20:00Z",
+export const fetchPost = async (req, res) => {
+  try {
+    const client_key = req.query.client_key || null;
 
-        "votes": {
-            "up": 45,
-            "down": 2,
-            "score": 43,
-            "userVote": 1
+    // 1. Fetch posts
+    const { data: posts, error } = await supabase
+      .from('request_with_votes')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    // 2. Fetch user votes
+    let userVotes = [];
+    if (client_key) {
+      const { data } = await supabase
+        .from('votes')
+        .select('request_id, vote_type')
+        .eq('client_key', client_key);
+
+      userVotes = data || [];
+    }
+
+    // 3. Fetch comments
+    const { data: comments } = await supabase
+      .from('comments')
+      .select('id, request_id, content, created_at')
+      .order('created_at', { ascending: true });
+
+    // 4. Shape response (THIS IS THE IMPORTANT PART)
+    const response = posts.map(post => {
+      const vote = userVotes.find(v => v.request_id === post.id);
+
+      return {
+        id: post.id,
+        content: post.content,
+        category: post.category,
+        created_at: post.created_at,
+        photo_path: post.photo_path,
+        client_key: post.client_key,
+
+        votes: {
+          up: post.upvotes,
+          down: post.downvotes,
+          score: post.score,
+          userVote: vote ? vote.vote_type : 0
         },
 
-        "photo_path": "https://abc.supabase.co/storage/v1/object/public/request-photos/img.png",
-        "canDelete": false
-        }
+        comments: comments
+          .filter(c => c.request_id === post.id)
+          .map(c => ({
+            id: c.id,
+            text: c.content,
+            created_at: c.created_at
+          }))
+      };
+    });
 
-    try{
-        
-    }catch(err){
-        console.log('Error With Post Fetching Mechanism');
-    }
+    res.json(response);
 
-}
-export const voteForPost = async (req , res )=>{
-    const voteData = {
-        request_id: 1,
-        client_key: "MOB-CHR-22",
-        vote_type: 1,
-    }
-    try{
-        const { data , err } = await supabase
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+};
+export const voteForPost = async (req, res) => {
+  const { request_id, vote_type, client_key } = req.body;
+
+  // Basic validation
+  if (!request_id || !client_key) {
+    return res.status(400).json({ error: 'Missing request_id or client_key' });
+  }
+
+  if (![1, -1, 0].includes(vote_type)) {
+    return res.status(400).json({ error: 'vote_type must be 1, -1, or 0' });
+  }
+
+  try {
+    if (vote_type === 0) {
+      // Remove vote
+      const { error } = await supabase
         .from('votes')
-        .upsert(voteData)
-        .select()
+        .delete()
+        .eq('request_id', request_id)
+        .eq('client_key', client_key);
 
-    }catch(err){
-        console.log("Error Found " , err);
+      if (error) throw error;
+    } else {
+      // Upsert (insert or update)
+      const { error } = await supabase
+        .from('votes')
+        .upsert(
+          { request_id, client_key, vote_type },
+          { onConflict: 'request_id,client_key' }   // comma-separated string (not array)
+        );
+
+      if (error) throw error;
     }
-    res.json("Vote Table Resposne");
-}
+
+    // Optional: return current vote state or success
+    res.status(200).json({ success: true });
+
+  } catch (err) {
+    console.error('Vote error:', err);
+    res.status(500).json({ error: 'Failed to process vote' });
+  }
+};
+
 const fetchVotes =  async () =>{
     try{
         const { data ,error } = await supabase
