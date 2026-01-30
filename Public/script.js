@@ -224,6 +224,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function createCardElement(req) {
+    console.log("Creating card for request:", req);
     const card = document.createElement("div");
     card.className = "card border-0 shadow-sm rounded-3 mb-3";
 
