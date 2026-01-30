@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", async () => {
   // DOM Elements
   const feedContainer = document.getElementById("feed-container");
@@ -26,7 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         "We need more power outlets in the library study area. It is always crowded and hard to find a spot to charge laptops.",
       category: "Facilities",
       created_at: new Date(Date.now() - 3600000).toISOString(),
-      votes: { up: 45, down: 2, score: 43, userVote: 0 },
+      votes: { up: 45, down: 2, score: 43 },
       photo_path: null,
       client_key: "dummy_key",
       comments: [],
@@ -37,7 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         "Can we extend the cafeteria hours during exam week? Many students stay late on campus.",
       category: "Academic",
       created_at: new Date(Date.now() - 7200000).toISOString(),
-      votes: { up: 120, down: 5, score: 115, userVote: 0 },
+      votes: { up: 120, down: 5, score: 115 },
       photo_path: null,
       client_key: "dummy_key",
       comments: [
@@ -53,7 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       content: "The Wi-Fi in the student center has been really spotty lately.",
       category: "Facilities",
       created_at: new Date(Date.now() - 86400000).toISOString(),
-      votes: { up: 8, down: 0, score: 8, userVote: 0 },
+      votes: { up: 8, down: 0, score: 8 },
       photo_path: "https://via.placeholder.com/600x400?text=Wi-Fi+Issue",
       client_key: "dummy_key",
       comments: [],
@@ -83,29 +82,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-
-
-async function createRequestOnServer(formData) {
+  async function createRequestOnServer(formData) {
     try {
-        const response = await fetch("/api/dbs/upload", {
-            method: "POST",
-            body: formData
-        });
+      const response = await fetch("/api/dbs/upload", {
+        method: "POST",
+        body: formData,
+        // IMPORTANT: do NOT set Content-Type header when using FormData
+        // Browser automatically sets multipart/form-data + boundary
+      });
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => "No error message");
-            throw new Error(`Server error ${response.status} - ${errorText}`);
-        }
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "No error message");
+        throw new Error(`Server error ${response.status} - ${errorText}`);
+      }
 
-        const savedRequest = await response.json();
-        return savedRequest;
-
+      const savedRequest = await response.json();
+      return savedRequest;
     } catch (err) {
-        console.error("Failed to create request on server:", err);
-        throw err; 
+      console.error("Failed to create request on server:", err);
+      throw err; // Let the caller handle the alert / UI feedback
+    }
   }
 
-}
+  async function updateRequestOnServer(updatedRequest) {
+    if (isUsingDemoData) {
+      const index = requests.findIndex((r) => r.id === updatedRequest.id);
+      if (index !== -1) {
+        requests[index] = updatedRequest;
+        renderFeed(getCurrentSort());
+      }
+      return true;
+    }
+
+    const payload = {
+      content: updatedRequest.content,
+      category: updatedRequest.category,
+      photo_path: updatedRequest.photo_path,
+      votes: updatedRequest.votes,
+      comments: updatedRequest.comments,
+      client_key: updatedRequest.client_key,
+    };
+
+    const res = await fetch(`/api/requests/${updatedRequest.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error("Update failed");
+    return true;
+  }
+
   async function deleteRequestFromServer(requestId) {
     if (isUsingDemoData) {
       requests = requests.filter((r) => r.id !== requestId);
@@ -113,9 +140,12 @@ async function createRequestOnServer(formData) {
       return true;
     }
 
-    const res = await fetch(`/api/dbs/requests/${requestId}?client_key=${clientKey}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(
+      `/api/dbs/requests/${requestId}?client_key=${clientKey}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     if (!res.ok) throw new Error("Delete failed");
     return true;
@@ -197,10 +227,7 @@ async function createRequestOnServer(formData) {
     const card = document.createElement("div");
     card.className = "card border-0 shadow-sm rounded-3 mb-3";
 
-    const upClass = req.votes.userVote === 1 ? "active" : "";
-    const downClass = req.votes.userVote === -1 ? "active" : "";
-
-    // allow deletion in demo mode or if user owns the post
+    // Allow deletion in demo mode or if user owns the post
     const canDelete = isUsingDemoData || req.client_key === clientKey;
     const deleteBtn = canDelete
       ? `<button class="btn btn-action text-danger delete-btn ms-auto" onclick="deleteRequest(${req.id})" title="Delete"><i class="bi bi-trash"></i></button>`
@@ -221,153 +248,131 @@ async function createRequestOnServer(formData) {
       .join("");
 
     const commentSectionId = `comments-${req.id}`;
-    const sidebarClass =
-      req.votes.userVote === 1
-        ? "upvoted"
-        : req.votes.userVote === -1
-          ? "downvoted"
-          : "";
 
     card.innerHTML = `
-      <div class="card-body p-0 d-flex">
-        <!-- Voting Sidebar -->
-        <div class="voting-sidebar ${sidebarClass}">
-          <button class="vote-btn upvote ${upClass}" onclick="handleVote(${req.id}, 1)" title="Upvote">
-            <i class="bi bi-caret-up-fill"></i>
-          </button>
-          <span class="vote-count">${formatVoteCount(req.votes.score)}</span>
-          <button class="vote-btn downvote ${downClass}" onclick="handleVote(${req.id}, -1)" title="Downvote">
-            <i class="bi bi-caret-down-fill"></i>
-          </button>
-        </div>
+    <div class="card-body p-0 d-flex">
+      <!-- Voting Sidebar -->
+      <div class="voting-sidebar">
+        <button class="vote-btn upvote" onclick="handleVote(${req.id}, 1)" title="Upvote">
+          <i class="bi bi-caret-up-fill"></i>
+        </button>
+        <span class="vote-count">${formatVoteCount(req.votes.score)}</span>
+        <button class="vote-btn downvote" onclick="handleVote(${req.id}, -1)" title="Downvote">
+          <i class="bi bi-caret-down-fill"></i>
+        </button>
+      </div>
 
-        <!-- Content Area -->
-        <div class="flex-grow-1 p-3">
-          <div class="meta-info mb-2 d-flex align-items-center">
-            <span class="category-tag text-uppercase" style="font-size: 0.7rem;">${req.category}</span>
-            <span class="text-muted mx-1">•</span>
-            <span class="posted-by">Posted by Student</span>
-            <span class="text-muted mx-1">•</span>
-            <span class="time-ago">${timeAgo(req.created_at)}</span>
-          </div>
-          <p class="post-title mb-3 fs-5">${escapeHtml(req.content)}</p>
-          ${renderMedia(req.photo_path)}
-          <hr class="text-muted opacity-25 my-2">
-          <div class="d-flex align-items-center flex-wrap gap-3 mt-2">
-            <button class="btn btn-action rounded-pill ps-0" type="button" data-bs-toggle="collapse" data-bs-target="#${commentSectionId}">
-              <i class="bi bi-chat-left me-1"></i> ${(req.comments || []).length} Comments
-            </button>
-            <button class="btn btn-action rounded-pill" onclick="handleShare('${escapeHtml(req.content)}')">
-              <i class="bi bi-share me-1"></i> Share
-            </button>
-            ${deleteBtn}
-          </div>
-          
-          <div class="collapse mt-3" id="${commentSectionId}">
-            <div class="card card-body bg-light border-0 p-3">
-              <div class="comments-list mb-3" style="max-height: 200px; overflow-y: auto;">
-                ${commentsHtml || '<p class="text-muted small text-center">No comments yet.</p>'}
-              </div>
-              <form onsubmit="handlePostComment(event, ${req.id})" class="d-flex gap-2">
-                <input type="text" class="form-control form-control-sm rounded-pill" placeholder="Write a comment..." required>
-                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Post</button>
-              </form>
+      <!-- Content Area -->
+      <div class="flex-grow-1 p-3">
+        <div class="meta-info mb-2 d-flex align-items-center">
+          <span class="category-tag text-uppercase" style="font-size: 0.7rem;">${req.category}</span>
+          <span class="text-muted mx-1">•</span>
+          <span class="posted-by">Posted by Student</span>
+          <span class="text-muted mx-1">•</span>
+          <span class="time-ago">${timeAgo(req.created_at)}</span>
+        </div>
+        <p class="post-title mb-3 fs-5">${escapeHtml(req.content)}</p>
+        ${renderMedia(req.photo_path)}
+        <hr class="text-muted opacity-25 my-2">
+        <div class="d-flex align-items-center flex-wrap gap-3 mt-2">
+          <button class="btn btn-action rounded-pill ps-0" type="button" data-bs-toggle="collapse" data-bs-target="#${commentSectionId}">
+            <i class="bi bi-chat-left me-1"></i> ${(req.comments || []).length} Comments
+          </button>
+          <button class="btn btn-action rounded-pill" onclick="handleShare('${escapeHtml(req.content)}')">
+            <i class="bi bi-share me-1"></i> Share
+          </button>
+          ${deleteBtn}
+        </div>
+        
+        <div class="collapse mt-3" id="${commentSectionId}">
+          <div class="card card-body bg-light border-0 p-3">
+            <div class="comments-list mb-3" style="max-height: 200px; overflow-y: auto;">
+              ${commentsHtml || '<p class="text-muted small text-center">No comments yet.</p>'}
             </div>
+            <form onsubmit="handlePostComment(event, ${req.id})" class="d-flex gap-2">
+              <input type="text" class="form-control form-control-sm rounded-pill" placeholder="Write a comment..." required>
+              <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Post</button>
+            </form>
           </div>
         </div>
       </div>
-    `;
+    </div>
+  `;
     feedContainer.appendChild(card);
   }
 
   // ─── Action Handlers ─────────────────────────────────────────────
 
-window.handleVote = function (requestId, direction) {   // direction = 1 (up) or -1 (down)
-  const index = requests.findIndex(r => r.id === requestId);
-  if (index === -1) return;
+  window.handleVote = function (requestId, direction) {
+    // direction = 1 (up) or -1 (down)
+    const index = requests.findIndex((r) => r.id === requestId);
+    if (index === -1) return;
 
-  const request = requests[index];
-  const previousState = structuredClone(request);           // for rollback
+    const request = requests[index];
+    const previousState = structuredClone(request); // for rollback
 
-  // ── Calculate new local vote state ────────────────────────────────
-  let { up, down, userVote } = request.votes;
-
-  if (userVote === direction) {
-    // Already voted this way → remove vote
-    if (direction === 1) up--;
-    else down--;
-    userVote = 0;
-  } else {
-    // Remove previous vote if any
-    if (userVote === 1) up--;
-    if (userVote === -1) down--;
+    // ── Calculate new local vote state ────────────────────────────────
+    let { up, down } = request.votes;
 
     // Apply new vote
     if (direction === 1) up++;
     else down++;
 
-    userVote = direction;
-  }
+    // Prevent negative counts (defensive)
+    up = Math.max(0, up);
+    down = Math.max(0, down);
 
-  // Prevent negative counts (defensive)
-  up   = Math.max(0, up);
-  down = Math.max(0, down);
+    const newVotes = {
+      up,
+      down,
+      score: up - down,
+    };
 
-  const newVotes = {
-    up,
-    down,
-    score: up - down,
-    userVote
-  };
+    // Optimistic update
+    requests[index] = {
+      ...request,
+      votes: newVotes,
+    };
 
-  // Optimistic update
-  requests[index] = {
-    ...request,
-    votes: newVotes
-  };
+    renderFeed(getCurrentSort());
 
-  renderFeed(getCurrentSort());
-
-  // ── Send to server (send the *intended final state* for user) ─────
-  voteOnServer({
-    request_id: requestId,
-    vote_type: userVote           // 1, -1, or 0 (remove)
-  })
-    .catch(err => {
-      console.error('Vote failed:', err);
+    // ── Send to server (send the *intended final state* for user) ─────
+    voteOnServer({
+      request_id: requestId,
+      vote_type: direction, // 1 or -1
+    }).catch((err) => {
+      console.error("Vote failed:", err);
       // Rollback
       requests[index] = previousState;
       renderFeed(getCurrentSort());
-      alert('Could not save your vote. Reverted change.');
+      alert("Could not save your vote. Reverted change.");
     });
-};
+  };
 
+  const voteOnServer = async ({ request_id, vote_type }) => {
+    if (!clientKey) {
+      throw new Error("clientKey is missing – cannot vote");
+    }
 
-const voteOnServer = async ({ request_id, vote_type }) => {
-  if (!clientKey) {
-    throw new Error('clientKey is missing – cannot vote');
-  }
+    const response = await fetch("/api/dbs/vote", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        request_id,
+        vote_type,
+        client_key: clientKey, // consistent naming
+      }),
+    });
 
-  const response = await fetch('/api/dbs/vote', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      request_id,
-      vote_type,
-      client_key: clientKey        // consistent naming
-    })
-  });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Server error ${response.status}`);
+    }
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Server error ${response.status}`);
-  }
-
-  return response.json();
-};
-
+    return response.json();
+  };
 
   window.handleShare = function (text) {
     const shareText = `Check out this request: "${text}" - via CampusVoice`;
@@ -380,65 +385,53 @@ const voteOnServer = async ({ request_id, vote_type }) => {
     }
   };
 
-window.handlePostComment = async function (e, reqId) {
-  e.preventDefault();
+  window.handlePostComment = async function (e, reqId) {
+    e.preventDefault();
+    const input = e.target.querySelector("input");
+    const text = input.value.trim();
+    if (!text) return;
 
-  const input = e.target.querySelector("input");
-  const text = input.value.trim();
-  if (!text) return;
+    const reqIndex = requests.findIndex((r) => r.id === reqId);
+    if (reqIndex === -1) return;
 
-  try {
-    const res = await fetch("/api/dbs/comment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        request_id: reqId,
-        content: text,
-        client_key: clientKey,
-      }),
-    });
+    const newComment = {
+      id: Date.now(),
+      text: text,
+      created_at: new Date().toISOString(),
+    };
 
-    if (!res.ok) throw new Error("Comment failed");
+    const updatedReq = { ...requests[reqIndex] };
+    updatedReq.comments = [...(updatedReq.comments || []), newComment];
 
-    const { comment } = await res.json();
+    try {
+      await updateRequestOnServer(updatedReq);
+      if (!isUsingDemoData) {
+        requests[reqIndex] = updatedReq;
+        renderFeed(getCurrentSort());
+      }
 
-    // Optimistic UI update
-    const reqIndex = requests.findIndex(r => r.id === reqId);
-    if (reqIndex !== -1) {
-      requests[reqIndex].comments.push({
-        id: comment.id,
-        text: comment.content,
-        created_at: comment.created_at,
-      });
-      renderFeed(getCurrentSort());
+      const collapseEl = document.getElementById(`comments-${reqId}`);
+      if (collapseEl) collapseEl.classList.add("show");
+
+      input.value = "";
+    } catch (err) {
+      alert("Failed to post comment. Please try again.");
     }
+  };
 
-    const collapseEl = document.getElementById(`comments-${reqId}`);
-    if (collapseEl) collapseEl.classList.add("show");
+  window.deleteRequest = async function (id) {
+    if (!confirm("Are you sure you want to delete this request?")) return;
 
-    input.value = "";
-
-  } catch (err) {
-    alert("Failed to post comment. Please try again.");
-  }
-};
-
-
-window.deleteRequest = async function (id) {
-  if (!confirm("Are you sure you want to delete this request?")) return;
-
-  try {
-    await deleteRequestFromServer(id);
-    if (!isUsingDemoData) {
-      requests = requests.filter((r) => r.id !== id);
-      renderFeed(getCurrentSort());
+    try {
+      await deleteRequestFromServer(id);
+      if (!isUsingDemoData) {
+        requests = requests.filter((r) => r.id !== id);
+        renderFeed(getCurrentSort());
+      }
+    } catch (err) {
+      alert("Delete failed. Please try again.");
     }
-  } catch (err) {
-    alert("Delete failed. Please try again.");
-  }
-};
-
-
+  };
   function getCurrentSort() {
     return sortRecentBtn.classList.contains("active") ? "recent" : "votes";
   }
@@ -448,62 +441,68 @@ window.deleteRequest = async function (id) {
   requestForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const contentEl   = document.getElementById("requestContent");
-    const categoryEl  = document.getElementById("requestCategory");
-    const fileInput   = document.getElementById("requestMedia");
+    const contentEl = document.getElementById("requestContent");
+    const categoryEl = document.getElementById("requestCategory");
+    const fileInput = document.getElementById("requestMedia");
 
-    const content  = contentEl.value.trim();
+    const content = contentEl.value.trim();
     const category = categoryEl.value;
-    const file     = fileInput.files?.[0] ?? null;
+    const file = fileInput.files?.[0] ?? null;
 
     // ── Basic client-side validation ─────────────────────────────────────
     if (!content) {
-        alert("Please write something in the description");
-        contentEl.focus();
-        return;
+      alert("Please write something in the description");
+      contentEl.focus();
+      return;
     }
 
     if (!category) {
-        alert("Please select a category");
-        categoryEl.focus();
-        return;
+      alert("Please select a category");
+      categoryEl.focus();
+      return;
     }
 
     // Optional: warn about large files
-    if (file && file.size > 5 * 1024 * 1024) {   // 5 MB example limit
-        if (!confirm(`File is ${(file.size / 1024 / 1024).toFixed(1)} MB.\nUpload anyway?`)) {
-            return;
-        }
+    if (file && file.size > 5 * 1024 * 1024) {
+      // 5 MB example limit
+      if (
+        !confirm(
+          `File is ${(file.size / 1024 / 1024).toFixed(1)} MB.\nUpload anyway?`,
+        )
+      ) {
+        return;
+      }
     }
 
     // ── Prepare multipart/form-data (this is what multer expects) ────────
     const formData = new FormData();
 
-    formData.append("content",    content);
-    formData.append("category",   category || "Other");
-    formData.append("client_key", clientKey);           // ← make sure clientKey is defined!
+    formData.append("content", content);
+    formData.append("category", category || "Other");
+    formData.append("client_key", clientKey); // ← make sure clientKey is defined!
 
     if (file) {
-        formData.append("image", file);                 // ← multer .single("image") or .array()
-        // Alternative names people commonly use: "file", "media", "attachment", "upload"
+      formData.append("image", file); // ← multer .single("image") or .array()
+      // Alternative names people commonly use: "file", "media", "attachment", "upload"
     }
 
     try {
-        const savedRequest = await createRequestOnServer(formData);
+      const savedRequest = await createRequestOnServer(formData);
 
-        if (!isUsingDemoData) {
-            requests.unshift(savedRequest);
-            renderFeed(getCurrentSort());
-        }
+      if (!isUsingDemoData) {
+        requests.unshift(savedRequest);
+        renderFeed(getCurrentSort());
+      }
 
-        requestForm.reset();
-        bootstrap.Modal.getInstance(document.getElementById("createRequestModal")).hide();
-
+      requestForm.reset();
+      bootstrap.Modal.getInstance(
+        document.getElementById("createRequestModal"),
+      ).hide();
     } catch (err) {
-        console.error("Create request failed", err);
-        alert("Failed to post your request. Please try again.");
+      console.error("Create request failed", err);
+      alert("Failed to post your request. Please try again.");
     }
-});
+  });
   // ─── Initial Load ────────────────────────────────────────────────
 
   requests = await fetchRequestsFromServer();
