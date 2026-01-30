@@ -61,24 +61,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // ─── API Functions ───────────────────────────────────────────────
 
-  async function fetchRequestsFromServer() {
-    try {
-      const res = await fetch("/api/requests");
-      if (!res.ok) throw new Error("Server error");
-      const data = await res.json();
-      if (Array.isArray(data.requests)) {
-        isUsingDemoData = false;
-        return data.requests;
-      } else {
-        throw new Error("Invalid format");
-      }
-    } catch (err) {
-      console.warn("Using sample data due to error:", err);
-      isUsingDemoData = true;
-      // alert("Offline mode: Using sample data. Changes will not be saved.");
-      return [...sample];
+async function fetchRequestsFromServer() {
+  try {
+    const res = await fetch("/api/dbs/fetch");
+    if (!res.ok) throw new Error("Server error");
+
+    const data = await res.json();
+
+    if (Array.isArray(data)) {
+      isUsingDemoData = false;
+      return data;
     }
+
+    throw new Error("Invalid format");
+  } catch (err) {
+    console.warn("Using sample data due to error:", err);
+    isUsingDemoData = true;
+    return [...sample];
   }
+}
+
 
   async function createRequestOnServer(newRequest) {
     if (isUsingDemoData) {
@@ -94,8 +96,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       client_key: clientKey,
     };
 
-    const res = await fetch("/api/requests/create", {
-      method: "POST",
+    const res = await fetch("api/dbs/fetch", {
+      method: "GET",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
