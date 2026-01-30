@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+
   async function createRequestOnServer(formData) {
     try {
       const response = await fetch("/api/dbs/upload", {
@@ -59,6 +60,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       throw err; // Let the caller handle the alert / UI feedback
     }
   }
+
 
   async function deleteRequestFromServer(requestId) {
 
@@ -254,7 +256,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       votes: newVotes,
     };
 
-    renderFeed(getCurrentSort());
+    renderFeed();
 
     // ── Send to server (send the *intended final state* for user) ─────
     voteOnServer({
