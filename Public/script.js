@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       console.warn("Using sample data due to error:", err);
       isUsingDemoData = true;
-      alert("Offline mode: Using sample data. Changes will not be saved.");
+      // alert("Offline mode: Using sample data. Changes will not be saved.");
       return [...sample];
     }
   }

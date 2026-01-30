@@ -100,31 +100,72 @@ export const deletePost = async (req,res) =>{
 export const updatePost = async (req,res) =>{
     
 }
-export const fetchPost = async (req,res) =>{
-    const Resposne ={
-        "id": 12,
-        "content": "We need more power outlets in the library study area.",
-        "category": "Facilities",
-        "created_at": "2026-01-24T18:20:00Z",
+export const fetchPost = async (req, res) => {
+  try {
+    const client_key = req.query.client_key || null;
 
-        "votes": {
-            "up": 45,
-            "down": 2,
-            "score": 43,
-            "userVote": 1
-        },
+    // 1. Fetch posts
+    const { data: posts, error } = await supabase
+      .from('request_with_votes')
+      .select('*')
+      .order('created_at', { ascending: true });
 
-        "photo_path": "https://abc.supabase.co/storage/v1/object/public/request-photos/img.png",
-        "canDelete": false
-        }
+    if (error) throw error;
 
-    try{
-        
-    }catch(err){
-        console.log('Error With Post Fetching Mechanism');
+    // 2. Fetch user votes
+    let userVotes = [];
+    if (client_key) {
+      const { data } = await supabase
+        .from('votes')
+        .select('request_id, vote_type')
+        .eq('client_key', client_key);
+
+      userVotes = data || [];
     }
 
-}
+    // 3. Fetch comments
+    const { data: comments } = await supabase
+      .from('comments')
+      .select('id, request_id, content, created_at')
+      .order('created_at', { ascending: true });
+
+    // 4. Shape response (THIS IS THE IMPORTANT PART)
+    const response = posts.map(post => {
+      const vote = userVotes.find(v => v.request_id === post.id);
+
+      return {
+        id: post.id,
+        content: post.content,
+        category: post.category,
+        created_at: post.created_at,
+        photo_path: post.photo_path,
+        client_key: post.client_key,
+
+        votes: {
+          up: post.upvotes,
+          down: post.downvotes,
+          score: post.score,
+          userVote: vote ? vote.vote_type : 0
+        },
+
+        comments: comments
+          .filter(c => c.request_id === post.id)
+          .map(c => ({
+            id: c.id,
+            text: c.content,
+            created_at: c.created_at
+          }))
+      };
+    });
+
+    res.json(response);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+};
+
 export const voteForPost = async (req , res )=>{
     const voteData = {
         request_id: 1,
