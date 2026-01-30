@@ -503,6 +503,67 @@ document.addEventListener("DOMContentLoaded", async () => {
       alert("Failed to post your request. Please try again.");
     }
   });
+
+  // ─── Sorting & Filtering ─────────────────────────────────────────
+
+  sortRecentBtn.addEventListener("click", () => {
+    sortRecentBtn.classList.add("active", "text-primary");
+    sortRecentBtn.classList.remove("text-secondary");
+    sortVotesBtn.classList.remove("active", "text-primary");
+    sortVotesBtn.classList.add("text-secondary");
+    renderFeed("recent");
+  });
+
+  sortVotesBtn.addEventListener("click", () => {
+    sortVotesBtn.classList.add("active", "text-primary");
+    sortVotesBtn.classList.remove("text-secondary");
+    sortRecentBtn.classList.remove("active", "text-primary");
+    sortRecentBtn.classList.add("text-secondary");
+    renderFeed("votes");
+  });
+
+  const categoryLinks = document.querySelectorAll(
+    '.category-filter a, .navbar-nav a[data-category], .navbar-nav a[data-type="feed"], .list-unstyled a[data-type="feed"]',
+  );
+
+  categoryLinks.forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      categoryLinks.forEach((l) => {
+        l.classList.remove(
+          "active-sidebar-link",
+          "fw-bold",
+          "text-primary",
+          "bg-light",
+        );
+        l.classList.add("text-secondary");
+      });
+      const clicked = e.target.closest("a");
+      if (clicked) {
+        clicked.classList.remove("text-secondary");
+        clicked.classList.add("active-sidebar-link");
+      }
+
+      const category = link.dataset.category;
+      const type = link.dataset.type;
+      const text = link.innerText;
+
+      if (type === "feed" || (!category && text)) {
+        currentCategory = "all";
+        if (text.includes("Popular")) sortVotesBtn.click();
+        else sortRecentBtn.click();
+      } else if (category) {
+        currentCategory = category;
+        renderFeed(getCurrentSort());
+      }
+
+      const nav = document.getElementById("navbarNav");
+      if (nav?.classList.contains("show")) {
+        bootstrap.Collapse.getInstance(nav)?.hide();
+      }
+    });
+  });
+
   // ─── Initial Load ────────────────────────────────────────────────
 
   requests = await fetchRequestsFromServer();
