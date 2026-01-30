@@ -161,36 +161,45 @@ export const fetchPost = async (req, res) => {
 export const voteForPost = async (req, res) => {
   const { request_id, vote_type, client_key } = req.body;
 
-  // validate vote_type
+  // Basic validation
+  if (!request_id || !client_key) {
+    return res.status(400).json({ error: 'Missing request_id or client_key' });
+  }
+
   if (![1, -1, 0].includes(vote_type)) {
-    return res.status(400).json({ error: "Invalid vote" });
+    return res.status(400).json({ error: 'vote_type must be 1, -1, or 0' });
   }
 
   try {
     if (vote_type === 0) {
-      // Remove the vote if it exists
-      await supabase
+      // Remove vote
+      const { error } = await supabase
         .from('votes')
         .delete()
         .eq('request_id', request_id)
         .eq('client_key', client_key);
+
+      if (error) throw error;
     } else {
-      // Insert or update vote
-      await supabase
+      // Upsert (insert or update)
+      const { error } = await supabase
         .from('votes')
         .upsert(
           { request_id, client_key, vote_type },
-          { onConflict: 'request_id,client_key' } // matches UNIQUE constraint
+          { onConflict: 'request_id,client_key' }   // comma-separated string (not array)
         );
+
+      if (error) throw error;
     }
 
-    res.json({ success: true });
+    // Optional: return current vote state or success
+    res.status(200).json({ success: true });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Voting failed' });
+    console.error('Vote error:', err);
+    res.status(500).json({ error: 'Failed to process vote' });
   }
 };
-
 
 const fetchVotes =  async () =>{
     try{

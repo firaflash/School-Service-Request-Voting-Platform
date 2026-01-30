@@ -313,55 +313,90 @@ async function createRequestOnServer(formData) {
 
   // ─── Action Handlers ─────────────────────────────────────────────
 
- window.handleVote = function (id, direction) {
-  const reqIndex = requests.findIndex((r) => r.id === id);
-  if (reqIndex === -1) return;
+window.handleVote = function (requestId, direction) {   // direction = 1 (up) or -1 (down)
+  const index = requests.findIndex(r => r.id === requestId);
+  if (index === -1) return;
 
-  const prevReq = structuredClone(requests[reqIndex]); // rollback if fails
-  const req = structuredClone(requests[reqIndex]);
-  const votes = { ...req.votes };
+  const request = requests[index];
+  const previousState = structuredClone(request);           // for rollback
 
-  // client-side vote calculation
-  if (votes.userVote === direction) {
-    direction === 1 ? votes.up-- : votes.down--;
-    votes.userVote = 0;
+  // ── Calculate new local vote state ────────────────────────────────
+  let { up, down, userVote } = request.votes;
+
+  if (userVote === direction) {
+    // Already voted this way → remove vote
+    if (direction === 1) up--;
+    else down--;
+    userVote = 0;
   } else {
-    if (votes.userVote === 1) votes.up--;
-    if (votes.userVote === -1) votes.down--;
+    // Remove previous vote if any
+    if (userVote === 1) up--;
+    if (userVote === -1) down--;
 
-    direction === 1 ? votes.up++ : votes.down++;
-    votes.userVote = direction;
+    // Apply new vote
+    if (direction === 1) up++;
+    else down++;
+
+    userVote = direction;
   }
 
-  votes.up = Math.max(0, votes.up);
-  votes.down = Math.max(0, votes.down);
-  votes.score = votes.up - votes.down;
+  // Prevent negative counts (defensive)
+  up   = Math.max(0, up);
+  down = Math.max(0, down);
 
-  req.votes = votes;
+  const newVotes = {
+    up,
+    down,
+    score: up - down,
+    userVote
+  };
 
-  // Optimistic UI update
-  requests[reqIndex] = req;
+  // Optimistic update
+  requests[index] = {
+    ...request,
+    votes: newVotes
+  };
+
   renderFeed(getCurrentSort());
 
-  // Send vote to server asynchronously
-  voteOnServer({ request_id: id, vote_type: votes.userVote })
-    .catch(() => {
-      // rollback if server fails
-      requests[reqIndex] = prevReq;
+  // ── Send to server (send the *intended final state* for user) ─────
+  voteOnServer({
+    request_id: requestId,
+    vote_type: userVote           // 1, -1, or 0 (remove)
+  })
+    .catch(err => {
+      console.error('Vote failed:', err);
+      // Rollback
+      requests[index] = previousState;
       renderFeed(getCurrentSort());
-      alert("Vote failed. Restored previous state.");
+      alert('Could not save your vote. Reverted change.');
     });
 };
 
 
 const voteOnServer = async ({ request_id, vote_type }) => {
-  const res = await fetch('/api/dbs/vote', {
+  if (!clientKey) {
+    throw new Error('clientKey is missing – cannot vote');
+  }
+
+  const response = await fetch('/api/dbs/vote', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ request_id, vote_type, clientKey }) // client_key from local
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      request_id,
+      vote_type,
+      client_key: clientKey        // consistent naming
+    })
   });
-  if (!res.ok) throw new Error('Vote failed');
-  return res.json();
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Server error ${response.status}`);
+  }
+
+  return response.json();
 };
 
 
