@@ -1,27 +1,21 @@
 :root {
     --primary-color: #2358ba;
-    /* Requested accessible Blue */
     --accent-orange: #FF4500;
     --accent-blue: #7193FF;
-    --bg-color: #F0F2F5;
-    /* Slightly lighter gray to make white pop more */
     --text-primary: #1A1A1B;
     --text-secondary: #5f6368;
 }
 
 body {
-    background-color: var(--bg-color);
     font-family: 'Inter', sans-serif;
-    /* Modern, clean font */
     color: var(--text-primary);
 }
 
 /* Sidebar Active State */
 .active-sidebar-link {
-    background-color: var(--primary-color) !important;
+    background-color: var(--primary-color);
     color: #fff !important;
     font-weight: 600;
-    border-radius: 6px;
 }
 
 /* Card Styling */
@@ -222,4 +216,23 @@ body {
 .navbar-toggler[aria-expanded="true"] .burger-icon span:nth-child(3) {
     top: 9px;
     transform: rotate(-135deg);
+}
+
+/* Sticky Feed Header */
+.sticky-feed-header {
+    position: sticky;
+    top: 56px;
+    /* Below navbar */
+    z-index: 1000;
+    background-color: #f8f9fa;
+    /* Match bg-light */
+    padding-top: 10px;
+    padding-bottom: 5px;
+}
+
+/* Sidebar Sticky Adjustments */
+.sidebar-sticky {
+    position: sticky;
+    top: 76px;
+    z-index: 900;
 }
