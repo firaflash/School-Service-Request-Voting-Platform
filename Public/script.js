@@ -248,7 +248,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
 
     const commentSectionId = `comments-${req.id}`;
-    const sidebarClass = req.votes.userVote === 1 ? "upvoted" : (req.votes.userVote === -1 ? "downvoted" : "");
+    const sidebarClass =
+      req.votes.userVote === 1
+        ? "upvoted"
+        : req.votes.userVote === -1
+          ? "downvoted"
+          : "";
 
     card.innerHTML = `
       <div class="card-body p-0 d-flex">
@@ -479,7 +484,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   const categoryLinks = document.querySelectorAll(
-    '.category-filter a, .navbar-nav a[data-category], .navbar-nav a[data-type="feed"]',
+    '.category-filter a, .navbar-nav a[data-category], .navbar-nav a[data-type="feed"], .list-unstyled a[data-type="feed"]',
   );
 
   categoryLinks.forEach((link) => {
