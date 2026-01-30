@@ -70,6 +70,7 @@ async function fetchRequestsFromServer() {
 
     if (Array.isArray(data)) {
       isUsingDemoData = false;
+      console.log(data);
       return data;
     }
 
@@ -80,6 +81,7 @@ async function fetchRequestsFromServer() {
     return [...sample];
   }
 }
+
 
 
   async function createRequestOnServer(newRequest) {
@@ -530,5 +532,6 @@ async function fetchRequestsFromServer() {
   // ─── Initial Load ────────────────────────────────────────────────
 
   requests = await fetchRequestsFromServer();
+
   renderFeed();
 });
