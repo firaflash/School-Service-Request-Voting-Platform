@@ -17,48 +17,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentCategory = "all";
   let isUsingDemoData = false;
 
-  // ─── SAMPLE DATA (matches your backend exactly) ───────────────────
-  const sample = [
-    {
-      id: 1,
-      content:
-        "We need more power outlets in the library study area. It is always crowded and hard to find a spot to charge laptops.",
-      category: "Facilities",
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      votes: { up: 45, down: 2, score: 43 },
-      photo_path: null,
-      client_key: "dummy_key",
-      comments: [],
-    },
-    {
-      id: 2,
-      content:
-        "Can we extend the cafeteria hours during exam week? Many students stay late on campus.",
-      category: "Academic",
-      created_at: new Date(Date.now() - 7200000).toISOString(),
-      votes: { up: 120, down: 5, score: 115 },
-      photo_path: null,
-      client_key: "dummy_key",
-      comments: [
-        {
-          id: 101,
-          text: "Yes please!",
-          created_at: new Date(Date.now() - 300000).toISOString(),
-        },
-      ],
-    },
-    {
-      id: 3,
-      content: "The Wi-Fi in the student center has been really spotty lately.",
-      category: "Facilities",
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      votes: { up: 8, down: 0, score: 8 },
-      photo_path: "https://via.placeholder.com/600x400?text=Wi-Fi+Issue",
-      client_key: "dummy_key",
-      comments: [],
-    },
-  ];
-
   // ─── API Functions ───────────────────────────────────────────────
 
   async function fetchRequestsFromServer() {
@@ -69,7 +27,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = await res.json();
 
       if (Array.isArray(data)) {
-        isUsingDemoData = false;
         console.log(data);
         return data;
       }
@@ -77,8 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       throw new Error("Invalid format");
     } catch (err) {
       console.warn("Using sample data due to error:", err);
-      isUsingDemoData = true;
-      return [...sample];
+      return null;
     }
   }
 
@@ -104,48 +60,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  async function updateRequestOnServer(updatedRequest) {
-    if (isUsingDemoData) {
-      const index = requests.findIndex((r) => r.id === updatedRequest.id);
-      if (index !== -1) {
-        requests[index] = updatedRequest;
-        renderFeed(getCurrentSort());
-      }
-      return true;
-    }
-
-    const payload = {
-      content: updatedRequest.content,
-      category: updatedRequest.category,
-      photo_path: updatedRequest.photo_path,
-      votes: updatedRequest.votes,
-      comments: updatedRequest.comments,
-      client_key: updatedRequest.client_key,
-    };
-
-    const res = await fetch(`/api/requests/${updatedRequest.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) throw new Error("Update failed");
-    return true;
-  }
-
   async function deleteRequestFromServer(requestId) {
-    if (isUsingDemoData) {
-      requests = requests.filter((r) => r.id !== requestId);
-      renderFeed(getCurrentSort());
-      return true;
-    }
 
-    const res = await fetch(
-      `/api/dbs/requests/${requestId}?client_key=${clientKey}`,
-      {
-        method: "DELETE",
-      },
-    );
+    const res = await fetch(`/api/dbs/requests/${requestId}?client_key=${clientKey}`, {
+  method: "DELETE",
+});
+
 
     if (!res.ok) throw new Error("Delete failed");
     return true;
@@ -224,7 +144,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function createCardElement(req) {
-    console.log("Creating card for request:", req);
     const card = document.createElement("div");
     card.className = "card border-0 shadow-sm rounded-3 mb-3";
 
@@ -386,56 +305,63 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
+
   window.handlePostComment = async function (e, reqId) {
-    e.preventDefault();
-    const input = e.target.querySelector("input");
-    const text = input.value.trim();
-    if (!text) return;
+  e.preventDefault();
 
-    const reqIndex = requests.findIndex((r) => r.id === reqId);
-    if (reqIndex === -1) return;
+  const input = e.target.querySelector("input");
+  const text = input.value.trim();
+  if (!text) return;
 
-    const newComment = {
-      id: Date.now(),
-      text: text,
-      created_at: new Date().toISOString(),
-    };
+  try {
+    const res = await fetch("/api/dbs/comment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        request_id: reqId,
+        content: text,
+        client_key: clientKey,
+      }),
+    });
 
-    const updatedReq = { ...requests[reqIndex] };
-    updatedReq.comments = [...(updatedReq.comments || []), newComment];
+    if (!res.ok) throw new Error("Comment failed");
 
-    try {
-      await updateRequestOnServer(updatedReq);
-      if (!isUsingDemoData) {
-        requests[reqIndex] = updatedReq;
-        renderFeed(getCurrentSort());
-      }
+    const { comment } = await res.json();
 
-      const collapseEl = document.getElementById(`comments-${reqId}`);
-      if (collapseEl) collapseEl.classList.add("show");
-
-      input.value = "";
-    } catch (err) {
-      alert("Failed to post comment. Please try again.");
+    // Optimistic UI update
+    const reqIndex = requests.findIndex(r => r.id === reqId);
+    if (reqIndex !== -1) {
+      requests[reqIndex].comments.push({
+        id: comment.id,
+        text: comment.content,
+        created_at: comment.created_at,
+      });
+      renderFeed(getCurrentSort());
     }
-  };
 
-  window.deleteRequest = async function (id) {
-    if (!confirm("Are you sure you want to delete this request?")) return;
+    const collapseEl = document.getElementById(`comments-${reqId}`);
+    if (collapseEl) collapseEl.classList.add("show");
 
-    try {
-      await deleteRequestFromServer(id);
-      if (!isUsingDemoData) {
-        requests = requests.filter((r) => r.id !== id);
-        renderFeed(getCurrentSort());
-      }
-    } catch (err) {
-      alert("Delete failed. Please try again.");
-    }
-  };
-  function getCurrentSort() {
-    return sortRecentBtn.classList.contains("active") ? "recent" : "votes";
+    input.value = "";
+
+  } catch (err) {
+    alert("Failed to post comment. Please try again.");
   }
+};
+
+
+window.deleteRequest = async function (id) {
+  if (!confirm("Are you sure you want to delete this request?")) return;
+
+  try {
+    await deleteRequestFromServer(id);
+      requests = requests.filter((r) => r.id !== id);
+      renderFeed();
+  } catch (err) {
+    alert("Delete failed. Please try again. :joy ");
+    console.log(err);
+  }
+};
 
   // ─── Form Submission ─────────────────────────────────────────────
 
