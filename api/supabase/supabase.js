@@ -111,6 +111,7 @@ export const fetchPost = async (req, res) => {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
+    console.log("User Posts ",posts);
 
     // 2. Fetch user votes
     let userVotes = [];
@@ -122,6 +123,7 @@ export const fetchPost = async (req, res) => {
 
       userVotes = data || [];
     }
+    console.log("User Votes:", userVotes);
 
     // 3. Fetch comments
     const { data: comments } = await supabase
