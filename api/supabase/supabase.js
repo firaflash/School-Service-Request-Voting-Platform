@@ -1,57 +1,49 @@
 import { supabase } from './supabaseClient.js';
-
 export const uploadPost = async (req, res) => {
   try {
-    // 1. Get text fields from body
-    const { description, category, client_key } = req.body;
+    const { content, category, client_key } = req.body;
 
-    if (!description || !client_key) {
-      return res.status(400).json({ error: 'Missing required fields: description and client_key' });
+    if (!content || !client_key) {
+      return res.status(400).json({
+        error: 'Missing required fields: content and client_key',
+      });
     }
 
-    // 2. Handle optional file upload
+    // Optional image
     let photo_path = null;
-
-    if (req.file) {  // multer attached the file here
-      photo_path = await uploadImageToStorage(req.file);
+    if (req.file) {
+      photo_path = await uploadImageToStorage(req.image);
       if (!photo_path) {
         return res.status(500).json({ error: 'Image upload failed' });
       }
     }
 
-    // 3. Prepare data for DB insert
-    const content = {
-      description,           // adjust column names to match your table exactly
-      category: category || 'General',
+    const insertData = {
+      content,
+      category: category || 'Other',
       client_key,
-      photo_path,            // now contains the public URL or signed path
-      // created_at auto-handled by DB default
+      photo_path, 
     };
 
-    // 4. Insert into DB
     const { data, error } = await supabase
-      .from('Request')       // ← case-sensitive! Check your table name
-      .insert(content)
-      .select();
+      .from('requests')
+      .insert(insertData)
+      .select()
+      .single();
 
     if (error) {
-      console.error('DB insert error:', error.message);
+      console.error(error);
       return res.status(400).json({
         error: 'Failed to create request',
         details: error.message,
       });
     }
 
-    console.log('Success:', data);
-
-    return res.status(201).json({
-      message: 'Request created successfully',
-      request: data[0],  // inserted row
-    });
+    res.status(201).json(data);
 
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return res.status(500).json({ error: 'Server error', details: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -111,7 +103,6 @@ export const fetchPost = async (req, res) => {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    console.log("User Posts ",posts);
 
     // 2. Fetch user votes
     let userVotes = [];
@@ -123,7 +114,6 @@ export const fetchPost = async (req, res) => {
 
       userVotes = data || [];
     }
-    console.log("User Votes:", userVotes);
 
     // 3. Fetch comments
     const { data: comments } = await supabase
