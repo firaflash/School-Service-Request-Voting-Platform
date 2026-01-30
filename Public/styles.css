@@ -52,11 +52,17 @@ body {
 }
 
 .voting-sidebar.upvoted {
-    background-color: rgba(255, 69, 0, 0.03);
+    background-color: rgba(113, 147, 255, 0.15);
+    /* Increased opacity */
+    border-left: 3px solid #7193ff;
+    /* Accent border */
 }
 
 .voting-sidebar.downvoted {
-    background-color: rgba(113, 147, 255, 0.03);
+    background-color: rgba(255, 69, 0, 0.15);
+    /* Increased opacity */
+    border-left: 3px solid #ff4500;
+    /* Accent border */
 }
 
 .vote-btn {
@@ -76,7 +82,8 @@ body {
 }
 
 .vote-btn:hover {
-    background-color: rgba(0, 0, 0, 0.04);
+    background-color: rgba(0, 0, 0, 0.08);
+    /* Darker hover */
 }
 
 .vote-btn:active {
@@ -85,14 +92,18 @@ body {
 
 .vote-btn.upvote:hover,
 .vote-btn.upvote.active {
-    color: #ff4500 !important;
-    background-color: rgba(255, 69, 0, 0.08);
+    color: #7193ff !important;
+    /* Swapped to Blue */
+    background-color: rgba(113, 147, 255, 0.12);
+    /* Darker & Swapped */
 }
 
 .vote-btn.downvote:hover,
 .vote-btn.downvote.active {
-    color: #7193ff !important;
-    background-color: rgba(113, 147, 255, 0.08);
+    color: #ff4500 !important;
+    /* Swapped to Orange/Red */
+    background-color: rgba(255, 69, 0, 0.12);
+    /* Darker & Swapped */
 }
 
 .vote-count {
