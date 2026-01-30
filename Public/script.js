@@ -1,3 +1,4 @@
+
 document.addEventListener("DOMContentLoaded", async () => {
   // DOM Elements
   const feedContainer = document.getElementById("feed-container");
@@ -89,8 +90,6 @@ async function createRequestOnServer(formData) {
         const response = await fetch("/api/dbs/upload", {
             method: "POST",
             body: formData
-            // IMPORTANT: do NOT set Content-Type header when using FormData
-            // Browser automatically sets multipart/form-data + boundary
         });
 
         if (!response.ok) {
@@ -103,41 +102,10 @@ async function createRequestOnServer(formData) {
 
     } catch (err) {
         console.error("Failed to create request on server:", err);
-        throw err; // Let the caller handle the alert / UI feedback
+        throw err; 
   }
 
 }
-
-
-  async function updateRequestOnServer(updatedRequest) {
-    if (isUsingDemoData) {
-      const index = requests.findIndex((r) => r.id === updatedRequest.id);
-      if (index !== -1) {
-        requests[index] = updatedRequest;
-        renderFeed(getCurrentSort());
-      }
-      return true;
-    }
-
-    const payload = {
-      content: updatedRequest.content,
-      category: updatedRequest.category,
-      photo_path: updatedRequest.photo_path,
-      votes: updatedRequest.votes,
-      comments: updatedRequest.comments,
-      client_key: updatedRequest.client_key,
-    };
-
-    const res = await fetch(`/api/requests/${updatedRequest.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) throw new Error("Update failed");
-    return true;
-  }
-
   async function deleteRequestFromServer(requestId) {
     if (isUsingDemoData) {
       requests = requests.filter((r) => r.id !== requestId);
@@ -145,9 +113,10 @@ async function createRequestOnServer(formData) {
       return true;
     }
 
-    const res = await fetch(`/api/requests/${requestId}`, {
+    const res = await fetch(`/api/dbs/requests/${requestId}?client_key=${clientKey}`, {
       method: "DELETE",
     });
+
     if (!res.ok) throw new Error("Delete failed");
     return true;
   }
@@ -411,52 +380,64 @@ const voteOnServer = async ({ request_id, vote_type }) => {
     }
   };
 
-  window.handlePostComment = async function (e, reqId) {
-    e.preventDefault();
-    const input = e.target.querySelector("input");
-    const text = input.value.trim();
-    if (!text) return;
+window.handlePostComment = async function (e, reqId) {
+  e.preventDefault();
 
-    const reqIndex = requests.findIndex((r) => r.id === reqId);
-    if (reqIndex === -1) return;
+  const input = e.target.querySelector("input");
+  const text = input.value.trim();
+  if (!text) return;
 
-    const newComment = {
-      id: Date.now(),
-      text: text,
-      created_at: new Date().toISOString(),
-    };
+  try {
+    const res = await fetch("/api/dbs/comment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        request_id: reqId,
+        content: text,
+        client_key: clientKey,
+      }),
+    });
 
-    const updatedReq = { ...requests[reqIndex] };
-    updatedReq.comments = [...(updatedReq.comments || []), newComment];
+    if (!res.ok) throw new Error("Comment failed");
 
-    try {
-      await updateRequestOnServer(updatedReq);
-      if (!isUsingDemoData) {
-        requests[reqIndex] = updatedReq;
-        renderFeed(getCurrentSort());
-      }
+    const { comment } = await res.json();
 
-      const collapseEl = document.getElementById(`comments-${reqId}`);
-      if (collapseEl) collapseEl.classList.add("show");
-
-      input.value = "";
-    } catch (err) {
-      alert("Failed to post comment. Please try again.");
+    // Optimistic UI update
+    const reqIndex = requests.findIndex(r => r.id === reqId);
+    if (reqIndex !== -1) {
+      requests[reqIndex].comments.push({
+        id: comment.id,
+        text: comment.content,
+        created_at: comment.created_at,
+      });
+      renderFeed(getCurrentSort());
     }
-  };
 
-  window.deleteRequest = async function (id) {
-    if (!confirm("Are you sure you want to delete this request?")) return;
-    try {
-      await deleteRequestFromServer(id);
-      if (!isUsingDemoData) {
-        requests = requests.filter((r) => r.id !== id);
-        renderFeed(getCurrentSort());
-      }
-    } catch (err) {
-      alert("Delete failed. Please try again.");
+    const collapseEl = document.getElementById(`comments-${reqId}`);
+    if (collapseEl) collapseEl.classList.add("show");
+
+    input.value = "";
+
+  } catch (err) {
+    alert("Failed to post comment. Please try again.");
+  }
+};
+
+
+window.deleteRequest = async function (id) {
+  if (!confirm("Are you sure you want to delete this request?")) return;
+
+  try {
+    await deleteRequestFromServer(id);
+    if (!isUsingDemoData) {
+      requests = requests.filter((r) => r.id !== id);
+      renderFeed(getCurrentSort());
     }
-  };
+  } catch (err) {
+    alert("Delete failed. Please try again.");
+  }
+};
+
 
   function getCurrentSort() {
     return sortRecentBtn.classList.contains("active") ? "recent" : "votes";

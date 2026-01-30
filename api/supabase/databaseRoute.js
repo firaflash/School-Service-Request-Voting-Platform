@@ -3,9 +3,9 @@ import multer from "multer";
 import {
   uploadPost,
   deletePost,
-  updatePost,
   fetchPost,
-  voteForPost
+  voteForPost,
+  postComment
 } from "./supabase.js";
 
 const router = Router();
@@ -21,8 +21,8 @@ const upload = multer({
 /* ---------- Routes ---------- */
 router.post("/upload", upload.single("image"), uploadPost);
 router.post("/vote", voteForPost);
-router.put("/comment", updatePost);
-router.delete("/delete", deletePost);
+router.post("/comment", postComment);
+router.delete("/requests/:id", deletePost);
 router.get("/fetch", fetchPost);
 
 export default router;

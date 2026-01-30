@@ -87,12 +87,73 @@ async function uploadImageToStorage(file) {
 }
 
 
-export const deletePost = async (req,res) =>{
-    
-}
-export const updatePost = async (req,res) =>{
-    
-}
+export const deletePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client_key = req.query.client_key; // or from header
+
+    if (!id || !client_key) {
+      return res.status(400).json({ error: "Missing id or client_key" });
+    }
+
+    // Enforce ownership
+    const { data, error } = await supabase
+      .from("requests")
+      .delete()
+      .eq("id", id)
+      .eq("client_key", client_key)
+      .select();
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(403).json({ error: "Not authorized to delete" });
+    }
+
+    // Comments + votes auto-delete via ON DELETE CASCADE
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error("DELETE ERROR:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+export const postComment = async (req, res) => {
+  try {
+    const { request_id, content, client_key } = req.body;
+
+    if (!request_id || !content || !client_key) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const { data, error } = await supabase
+      .from("comments")
+      .insert({
+        request_id,
+        content,
+        client_key,
+      })
+      .select();
+
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.status(201).json({ comment: data[0] });
+
+  } catch (err) {
+    console.error("POST COMMENT ERROR:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
 export const fetchPost = async (req, res) => {
   try {
     const client_key = req.query.client_key || null;
