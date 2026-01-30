@@ -5,13 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hilcoe School Service Request Platform</title>
-    <link href="./bootstrap.min.css" rel="stylesheet">
+    <link href="bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css">
-    <link rel="icon" href="./Icons/favicon.svg" type="image/svg+xml">
-    <script defer src="/_vercel/insights/script.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
 </head>
 
 <body class="bg-light">
@@ -127,10 +126,6 @@
                 <div id="feed-container">
                     <!-- Posts will be injected here by JS -->
                 </div>
-
-                <!-- Loading Spinner / Empty State -->
-                <div id="loading-spinner" class="text-center py-5 d-none">
-                </div>
             </div>
 
             <!-- Right Sidebar (Info) -->
@@ -167,9 +162,8 @@
                                 required>
                                 <option value="" disabled selected>Choose a category</option>
                                 <option value="Academic">Academic</option>
-                                <option value="Maintenance">Maintenance</option>
                                 <option value="Facility">Facility</option>
-                                <option value="IT">IT</option>
+                                <option value="Social">Social</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
@@ -178,10 +172,10 @@
                                 placeholder="What's on your mind?" required></textarea>
                         </div>
                         <div class="mb-3">
-                            <label for="requestMedia" class="form-label text-muted small fw-bold ms-1">Attach Image or
-                                Video (Optional)</label>
+                            <label for="requestMedia" class="form-label text-muted small fw-bold ms-1">Attach
+                                Image</label>
                             <input class="form-control border-0 bg-light rounded-3" type="file" id="requestMedia"
-                                accept="image/*,video/*">
+                                accept="image/*">
                         </div>
                         <div class="d-flex justify-content-end">
                             <button type="button" class="btn btn-light rounded-pill px-4 me-2 fw-bold"
@@ -195,6 +189,7 @@
     </div>
 
     <script src="bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
+    <script src="test.js"></script>
 </body>
+
 </html>

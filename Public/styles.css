@@ -222,10 +222,8 @@ body {
 .sticky-feed-header {
     position: sticky;
     top: 56px;
-    /* Below navbar */
     z-index: 1000;
     background-color: #f8f9fa;
-    /* Match bg-light */
     padding-top: 10px;
     padding-bottom: 5px;
 }
