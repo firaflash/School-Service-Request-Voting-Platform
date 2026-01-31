@@ -146,12 +146,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function createCardElement(req) {
-    console.log(req);
+     req.votes ??= {
+    up: 0,
+    down: 0,
+    score: 0,
+    userVote: 0,
+  };
     const card = document.createElement("div");
     card.className = "card border-0 shadow-sm rounded-3 mb-3";
 
-    // Allow deletion in demo mode or if user owns the post
-    const canDelete = (req.client_key === clientKey);
+    const upClass = req.votes?.userVote === 1 ? "active" : "";
+    const downClass = req.votes?.userVote === -1 ? "active" : "";
+
+    // allow deletion in demo mode or if user owns the post
+    const canDelete = isUsingDemoData || req.client_key === clientKey;
     const deleteBtn = canDelete
       ? `<button class="btn btn-action text-danger delete-btn ms-auto" onclick="deleteRequest(${req.id})" title="Delete"><i class="bi bi-trash"></i></button>`
       : "";
@@ -171,56 +179,62 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
 
     const commentSectionId = `comments-${req.id}`;
+    const sidebarClass =
+      req.votes.userVote === 1
+        ? "upvoted"
+        : req.votes.userVote === -1
+          ? "downvoted"
+          : "";
 
     card.innerHTML = `
-    <div class="card-body p-0 d-flex">
-      <!-- Voting Sidebar -->
-      <div class="voting-sidebar">
-        <button class="vote-btn upvote" onclick="handleVote(${req.id}, 1)" title="Upvote">
-          <i class="bi bi-caret-up-fill"></i>
-        </button>
-        <span class="vote-count">  ${formatVoteCount(req.votes?.score ?? 0)}</span>
-        <button class="vote-btn downvote" onclick="handleVote(${req.id}, -1)" title="Downvote">
-          <i class="bi bi-caret-down-fill"></i>
-        </button>
-      </div>
+      <div class="card-body p-0 d-flex">
+        <!-- Voting Sidebar -->
+        <div class="voting-sidebar ${sidebarClass}">
+          <button class="vote-btn upvote ${upClass}" onclick="handleVote(${req.id}, 1)" title="Upvote">
+            <i class="bi bi-caret-up-fill"></i>
+          </button>
+          <span class="vote-count">${formatVoteCount(req.votes.score)}</span>
+          <button class="vote-btn downvote ${downClass}" onclick="handleVote(${req.id}, -1)" title="Downvote">
+            <i class="bi bi-caret-down-fill"></i>
+          </button>
+        </div>
 
-      <!-- Content Area -->
-      <div class="flex-grow-1 p-3">
-        <div class="meta-info mb-2 d-flex align-items-center">
-          <span class="category-tag text-uppercase" style="font-size: 0.7rem;">${req.category}</span>
-          <span class="text-muted mx-1">•</span>
-          <span class="posted-by">Posted by Student</span>
-          <span class="text-muted mx-1">•</span>
-          <span class="time-ago">${timeAgo(req.created_at)}</span>
-        </div>
-        <p class="post-title mb-3 fs-5">${escapeHtml(req.content)}</p>
-        ${renderMedia(req.photo_path)}
-        <hr class="text-muted opacity-25 my-2">
-        <div class="d-flex align-items-center flex-wrap gap-3 mt-2">
-          <button class="btn btn-action rounded-pill ps-0" type="button" data-bs-toggle="collapse" data-bs-target="#${commentSectionId}">
-            <i class="bi bi-chat-left me-1"></i> ${(req.comments || []).length} Comments
-          </button>
-          <button class="btn btn-action rounded-pill" onclick="handleShare('${escapeHtml(req.content)}')">
-            <i class="bi bi-share me-1"></i> Share
-          </button>
-          ${deleteBtn}
-        </div>
-        
-        <div class="collapse mt-3" id="${commentSectionId}">
-          <div class="card card-body bg-light border-0 p-3">
-            <div class="comments-list mb-3" style="max-height: 200px; overflow-y: auto;">
-              ${commentsHtml || '<p class="text-muted small text-center">No comments yet.</p>'}
+        <!-- Content Area -->
+        <div class="flex-grow-1 p-3">
+          <div class="meta-info mb-2 d-flex align-items-center">
+            <span class="category-tag text-uppercase" style="font-size: 0.7rem;">${req.category}</span>
+            <span class="text-muted mx-1">•</span>
+            <span class="posted-by">Posted by Student</span>
+            <span class="text-muted mx-1">•</span>
+            <span class="time-ago">${timeAgo(req.created_at)}</span>
+          </div>
+          <p class="post-title mb-3 fs-5">${escapeHtml(req.content)}</p>
+          ${renderMedia(req.photo_path)}
+          <hr class="text-muted opacity-25 my-2">
+          <div class="d-flex align-items-center flex-wrap gap-3 mt-2">
+            <button class="btn btn-action rounded-pill ps-0" type="button" data-bs-toggle="collapse" data-bs-target="#${commentSectionId}">
+              <i class="bi bi-chat-left me-1"></i> ${(req.comments || []).length} Comments
+            </button>
+            <button class="btn btn-action rounded-pill" onclick="handleShare('${escapeHtml(req.content)}')">
+              <i class="bi bi-share me-1"></i> Share
+            </button>
+            ${deleteBtn}
+          </div>
+          
+          <div class="collapse mt-3" id="${commentSectionId}">
+            <div class="card card-body bg-light border-0 p-3">
+              <div class="comments-list mb-3" style="max-height: 200px; overflow-y: auto;">
+                ${commentsHtml || '<p class="text-muted small text-center">No comments yet.</p>'}
+              </div>
+              <form onsubmit="handlePostComment(event, ${req.id})" class="d-flex gap-2">
+                <input type="text" class="form-control form-control-sm rounded-pill" placeholder="Write a comment..." required>
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Post</button>
+              </form>
             </div>
-            <form onsubmit="handlePostComment(event, ${req.id})" class="d-flex gap-2">
-              <input type="text" class="form-control form-control-sm rounded-pill" placeholder="Write a comment..." required>
-              <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Post</button>
-            </form>
           </div>
         </div>
       </div>
-    </div>
-  `;
+    `;
     feedContainer.appendChild(card);
   }
 
