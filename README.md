@@ -21,6 +21,7 @@ A community-driven platform for students to voice their needs and prioritize ser
 ## 🎯 Overview
 
 CampusVoice is a full-stack web application that allows students to:
+
 - Submit service requests with categories and media attachments
 - Vote on requests to prioritize them
 - Comment and discuss requests
@@ -32,6 +33,7 @@ The platform uses a voting system similar to Reddit, where requests with higher 
 ## ✨ Features
 
 ### Core Functionality
+
 - **Request Creation**: Submit service requests with text content, category selection, and optional image/video attachments
 - **Voting System**: Upvote or downvote requests to help prioritize them
 - **Comments**: Engage in discussions by commenting on requests
@@ -42,6 +44,7 @@ The platform uses a voting system similar to Reddit, where requests with higher 
 - **Responsive Design**: Mobile-friendly interface with Bootstrap 5
 
 ### User Experience
+
 - **Optimistic UI Updates**: Instant feedback for user actions
 - **Client-side State Management**: Uses localStorage for user identification
 - **Real-time Feed**: Dynamic rendering of requests, votes, and comments
@@ -50,6 +53,7 @@ The platform uses a voting system similar to Reddit, where requests with higher 
 ## 🛠 Tech Stack
 
 ### Frontend
+
 - **HTML5**: Semantic markup
 - **CSS3**: Custom styling with CSS variables
 - **JavaScript (ES6+)**: Vanilla JavaScript for client-side logic
@@ -57,6 +61,7 @@ The platform uses a voting system similar to Reddit, where requests with higher 
 - **Bootstrap Icons**: Icon library
 
 ### Backend
+
 - **Node.js**: Runtime environment
 - **Express.js 5.2.1**: Web application framework
 - **Supabase**: Backend-as-a-Service (PostgreSQL database + Storage)
@@ -66,6 +71,7 @@ The platform uses a voting system similar to Reddit, where requests with higher 
 - **dotenv**: Environment variable management
 
 ### Deployment
+
 - **Vercel**: Hosting platform
 - **Vercel Analytics**: Usage analytics
 
@@ -103,63 +109,67 @@ School-Service-Request-Voting-Platform/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd School-Service-Request-Voting-Platform
    ```
-
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
-
 3. **Set up environment variables**
    Create a `.env` file in the root directory:
+
    ```env
    SUPABASE_URL=your_supabase_project_url
    SUPABASE_KEY=your_supabase_anon_key
    PORT=5000
    NODE_ENV=development
    ```
-
 4. **Set up Supabase**
+
    - Create a new Supabase project
    - Create the necessary tables (see [Database Schema](#database-schema))
    - Create a storage bucket named `Request_Img`
    - Configure storage bucket policies for public read access
-
 5. **Run the development server**
+
    ```bash
    npm run dev
    ```
-
 6. **Open your browser**
    Navigate to `http://localhost:5000`
 
 ## 🔐 Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `SUPABASE_URL` | Your Supabase project URL | Yes |
-| `SUPABASE_KEY` | Your Supabase anonymous/public key | Yes |
-| `PORT` | Server port (default: 5000) | No |
-| `NODE_ENV` | Environment mode (development/production) | No |
+| Variable         | Description                               | Required |
+| ---------------- | ----------------------------------------- | -------- |
+| `SUPABASE_URL` | Your Supabase project URL                 | Yes      |
+| `SUPABASE_KEY` | Your Supabase anonymous/public key        | Yes      |
+| `PORT`         | Server port (default: 5000)               | No       |
+| `NODE_ENV`     | Environment mode (development/production) | No       |
 
 ## 📡 API Endpoints
 
 ### Base URL
+
 - Development: `http://localhost:5000`
 - Production: Your Vercel deployment URL
 
 ### Endpoints
 
 #### `GET /api/dbs/fetch`
+
 Fetch all requests with votes and comments.
 
 **Query Parameters:**
+
 - `client_key` (optional): User's client key for personalized vote data
 
 **Response:**
+
 ```json
 [
   {
@@ -187,17 +197,20 @@ Fetch all requests with votes and comments.
 ```
 
 #### `POST /api/dbs/upload`
+
 Create a new service request.
 
 **Content-Type:** `multipart/form-data`
 
 **Form Data:**
+
 - `content` (string, required): Request description
 - `category` (string, required): Category (Academic, Maintenance, Facility, IT, Other)
 - `client_key` (string, required): User's client key
 - `image` (file, optional): Image or video file (max 5MB)
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -210,11 +223,13 @@ Create a new service request.
 ```
 
 #### `POST /api/dbs/vote`
+
 Vote on a request.
 
 **Content-Type:** `application/json`
 
 **Request Body:**
+
 ```json
 {
   "request_id": 1,
@@ -224,11 +239,13 @@ Vote on a request.
 ```
 
 **Vote Types:**
+
 - `1`: Upvote
 - `-1`: Downvote
 - `0`: Remove vote
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -236,11 +253,13 @@ Vote on a request.
 ```
 
 #### `POST /api/dbs/comment`
+
 Add a comment to a request.
 
 **Content-Type:** `application/json`
 
 **Request Body:**
+
 ```json
 {
   "request_id": 1,
@@ -250,6 +269,7 @@ Add a comment to a request.
 ```
 
 **Response:**
+
 ```json
 {
   "comment": {
@@ -263,12 +283,15 @@ Add a comment to a request.
 ```
 
 #### `DELETE /api/dbs/requests/:id`
+
 Delete a request (only by owner).
 
 **Query Parameters:**
+
 - `client_key` (required): User's client key
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -280,47 +303,52 @@ Delete a request (only by owner).
 ### Tables
 
 #### `requests`
+
 Stores service requests submitted by users.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | SERIAL PRIMARY KEY | Unique request identifier |
-| `content` | TEXT | Request description |
-| `category` | VARCHAR | Category (Academic, Maintenance, Facility, IT, Other) |
-| `client_key` | VARCHAR | User identifier |
-| `photo_path` | TEXT | URL to uploaded image/video |
-| `created_at` | TIMESTAMP | Creation timestamp |
+| Column         | Type               | Description                                           |
+| -------------- | ------------------ | ----------------------------------------------------- |
+| `id`         | SERIAL PRIMARY KEY | Unique request identifier                             |
+| `content`    | TEXT               | Request description                                   |
+| `category`   | VARCHAR            | Category (Academic, Maintenance, Facility, IT, Other) |
+| `client_key` | VARCHAR            | User identifier                                       |
+| `photo_path` | TEXT               | URL to uploaded image/video                           |
+| `created_at` | TIMESTAMP          | Creation timestamp                                    |
 
 #### `votes`
+
 Stores user votes on requests.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | SERIAL PRIMARY KEY | Unique vote identifier |
-| `request_id` | INTEGER | Foreign key to requests.id |
-| `client_key` | VARCHAR | User identifier |
-| `vote_type` | INTEGER | 1 (upvote) or -1 (downvote) |
-| `created_at` | TIMESTAMP | Vote timestamp |
+| Column         | Type               | Description                 |
+| -------------- | ------------------ | --------------------------- |
+| `id`         | SERIAL PRIMARY KEY | Unique vote identifier      |
+| `request_id` | INTEGER            | Foreign key to requests.id  |
+| `client_key` | VARCHAR            | User identifier             |
+| `vote_type`  | INTEGER            | 1 (upvote) or -1 (downvote) |
+| `created_at` | TIMESTAMP          | Vote timestamp              |
 
 **Unique Constraint:** `(request_id, client_key)` - One vote per user per request
 
 #### `comments`
+
 Stores comments on requests.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | SERIAL PRIMARY KEY | Unique comment identifier |
-| `request_id` | INTEGER | Foreign key to requests.id |
-| `content` | TEXT | Comment text |
-| `client_key` | VARCHAR | User identifier |
-| `created_at` | TIMESTAMP | Comment timestamp |
+| Column         | Type               | Description                |
+| -------------- | ------------------ | -------------------------- |
+| `id`         | SERIAL PRIMARY KEY | Unique comment identifier  |
+| `request_id` | INTEGER            | Foreign key to requests.id |
+| `content`    | TEXT               | Comment text               |
+| `client_key` | VARCHAR            | User identifier            |
+| `created_at` | TIMESTAMP          | Comment timestamp          |
 
 ### Views
 
 #### `request_with_votes`
+
 A database view that aggregates vote counts for each request.
 
 **Columns:**
+
 - All columns from `requests`
 - `upvotes`: Count of upvotes
 - `downvotes`: Count of downvotes
@@ -329,11 +357,13 @@ A database view that aggregates vote counts for each request.
 ### Storage
 
 #### Bucket: `Request_Img`
+
 Stores uploaded images and videos.
 
 **Path Structure:** `requests/{timestamp}-{random}.{ext}`
 
 **Policies:**
+
 - Public read access
 - Authenticated write access
 
@@ -386,22 +416,23 @@ GROUP BY r.id;
 ### Vercel Deployment
 
 1. **Install Vercel CLI** (optional)
+
    ```bash
    npm i -g vercel
    ```
-
 2. **Deploy**
+
    ```bash
    vercel
    ```
-
 3. **Set Environment Variables**
    In Vercel dashboard:
+
    - Go to Project Settings → Environment Variables
    - Add `SUPABASE_URL` and `SUPABASE_KEY`
-
 4. **Configure vercel.json**
    The project includes a `vercel.json` configuration file that:
+
    - Builds the API serverless function from `api/index.js`
    - Serves static files from `Public/`
    - Routes all requests to the Express app
@@ -409,11 +440,12 @@ GROUP BY r.id;
 ### Manual Deployment
 
 1. Build the project (if needed)
+
    ```bash
    npm run build
    ```
-
 2. Start the production server
+
    ```bash
    NODE_ENV=production npm start
    ```
@@ -423,33 +455,34 @@ GROUP BY r.id;
 ### For Students
 
 1. **Creating a Request**
+
    - Click "Create Request" or the input field
    - Select a category
    - Write your request description
    - Optionally attach an image/video
    - Click "Post"
-
 2. **Voting**
+
    - Click the up arrow (↑) to upvote
    - Click the down arrow (↓) to downvote
    - Your vote is saved automatically
-
 3. **Commenting**
+
    - Click "Comments" on any request
    - Type your comment
    - Click "Post"
-
 4. **Filtering and Sorting**
+
    - Use the sidebar to filter by category
    - Toggle between "New" and "Top" sorting
    - Click "Home" to see all requests
-
 5. **Sharing**
+
    - Click "Share" on any request
    - The link is copied to your clipboard
    - Share the link to direct others to the specific request
-
 6. **Deleting Your Request**
+
    - Click the trash icon on your own requests
    - Confirm deletion
 
@@ -470,12 +503,14 @@ GROUP BY r.id;
 ### Code Structure
 
 #### Frontend (`Public/script.js`)
+
 - **State Management**: Global `requests` array, `clientKey` in localStorage
 - **API Functions**: `fetchRequestsFromServer()`, `createRequestOnServer()`, etc.
 - **Rendering**: `renderFeed()`, `createCardElement()`
 - **Event Handlers**: Vote, comment, delete, form submission
 
 #### Backend (`api/`)
+
 - **Server Setup**: Express app with static file serving
 - **Routes**: Modular route handlers in `databaseRoute.js`
 - **Database Operations**: Supabase queries in `supabase.js`
@@ -484,16 +519,17 @@ GROUP BY r.id;
 ### Adding Features
 
 1. **New API Endpoint**
+
    - Add route in `api/supabase/databaseRoute.js`
    - Implement handler in `api/supabase/supabase.js`
    - Update frontend in `Public/script.js`
-
 2. **New Database Table**
+
    - Create table in Supabase
    - Add operations in `api/supabase/supabase.js`
    - Update API routes
-
 3. **UI Changes**
+
    - Modify `Public/index.html` for structure
    - Update `Public/styles.css` for styling
    - Adjust `Public/script.js` for functionality
@@ -512,7 +548,7 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 ## 👤 Author
 
-**Firaol Feyisa**
+**Firaol Feyisa , Dawit Zelalem , Eyuel AtskeMariyam** 
 
 ## 🙏 Acknowledgments
 
