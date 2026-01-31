@@ -269,52 +269,51 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
   // ─── Action Handlers ─────────────────────────────────────────────
+window.handleVote = function (requestId, direction) {
+  const index = requests.findIndex((r) => r.id === requestId);
+  if (index === -1) return;
 
-  window.handleVote = function (requestId, direction) {
-    // direction = 1 (up) or -1 (down)
-    const index = requests.findIndex((r) => r.id === requestId);
-    if (index === -1) return;
+  const request = requests[index];
 
-    const request = requests[index];
-    const previousState = structuredClone(request); // for rollback
+  // 🚫 prevent double vote
+  if (request.votes.userVote !== 0) {
+    alert("You already voted on this post.");
+    return;
+  }
 
-    // ── Calculate new local vote state ────────────────────────────────
-    let { up, down } = request.votes;
+  const previousState = structuredClone(request); // rollback safety
 
-    // Apply new vote
-    if (direction === 1) up++;
-    else down++;
+  let { up, down } = request.votes;
 
-    // Prevent negative counts (defensive)
-    up = Math.max(0, up);
-    down = Math.max(0, down);
+  if (direction === 1) up++;
+  else down++;
 
-    const newVotes = {
-      up,
-      down,
-      score: up - down,
-    };
-
-    // Optimistic update
-    requests[index] = {
-      ...request,
-      votes: newVotes,
-    };
-
-    renderFeed();
-
-    // ── Send to server (send the *intended final state* for user) ─────
-    voteOnServer({
-      request_id: requestId,
-      vote_type: direction, // 1 or -1
-    }).catch((err) => {
-      console.error("Vote failed:", err);
-      // Rollback
-      requests[index] = previousState;
-      renderFeed();
-      alert("Could not save your vote. Reverted change.");
-    });
+  const newVotes = {
+    up,
+    down,
+    score: up - down,
+    userVote: direction, // ✅ PERMANENT UI STATE
   };
+
+  // optimistic update
+  requests[index] = {
+    ...request,
+    votes: newVotes,
+  };
+
+  renderFeed();
+
+  voteOnServer({
+    request_id: requestId,
+    vote_type: direction,
+  }).catch((err) => {
+    console.error("Vote failed:", err);
+    requests[index] = previousState;
+    renderFeed();
+    alert("Could not save your vote. Reverted change.");
+  });
+};
+
 
   const voteOnServer = async ({ request_id, vote_type }) => {
     if (!clientKey) {
