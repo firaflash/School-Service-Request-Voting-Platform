@@ -145,6 +145,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     displayRequests.forEach((req) => createCardElement(req));
   }
 
+  function scrollToHashPost() {
+  const hash = window.location.hash;
+  if (!hash) return;
+
+  const el = document.querySelector(hash);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.classList.add("highlight-post");
+
+    // optional highlight removal
+    setTimeout(() => el.classList.remove("highlight-post"), 2000);
+  }
+}
+
+
   function createCardElement(req) {
      req.votes ??= {
     up: 0,
@@ -153,7 +168,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     userVote: 0,
   };
     const card = document.createElement("div");
+    
     card.className = "card border-0 shadow-sm rounded-3 mb-3";
+    // 🔗 deep-link anchor
+    card.id = `post-${req.id}`;
+
 
     const upClass = req.votes?.userVote === 1 ? "active" : "";
     const downClass = req.votes?.userVote === -1 ? "active" : "";
@@ -215,9 +234,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <button class="btn btn-action rounded-pill ps-0" type="button" data-bs-toggle="collapse" data-bs-target="#${commentSectionId}">
               <i class="bi bi-chat-left me-1"></i> ${(req.comments || []).length} Comments
             </button>
-            <button class="btn btn-action rounded-pill" onclick="handleShare('${escapeHtml(req.content)}')">
-              <i class="bi bi-share me-1"></i> Share
-            </button>
+              <button class="btn btn-action rounded-pill" onclick="handleShare(${req.id})">
+                <i class="bi bi-share me-1"></i> Share
+              </button>
             ${deleteBtn}
           </div>
           
@@ -237,6 +256,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
     feedContainer.appendChild(card);
   }
+
+  window.handleShare = function (postId) {
+  const url = `${window.location.origin}${window.location.pathname}#post-${postId}`;
+
+  navigator.clipboard.writeText(url).then(() => {
+    alert("Post link copied to clipboard!");
+  }).catch(() => {
+    alert("Failed to copy link.");
+  });
+}
+
 
   // ─── Action Handlers ─────────────────────────────────────────────
 
@@ -311,16 +341,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return response.json();
   };
 
-  window.handleShare = function (text) {
-    const shareText = `Check out this request: "${text}" - via CampusVoice`;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareText).then(() => {
-        alert("Copied to clipboard!");
-      });
-    } else {
-      alert("Share this: " + shareText);
-    }
-  };
+
 
 
   window.handlePostComment = async function (e, reqId) {
@@ -514,4 +535,5 @@ window.deleteRequest = async function (id) {
   requests = await fetchRequestsFromServer();
 
   renderFeed();
+  scrollToHashPost();
 });

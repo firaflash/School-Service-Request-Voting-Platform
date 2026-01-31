@@ -223,3 +223,8 @@ body {
     top: 9px;
     transform: rotate(-135deg);
 }
+.highlight-post {
+  outline: 2px solid #0d6efd;
+  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+  transition: box-shadow 0.3s ease;
+}
