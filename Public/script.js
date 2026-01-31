@@ -146,11 +146,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function createCardElement(req) {
+    console.log(req);
     const card = document.createElement("div");
     card.className = "card border-0 shadow-sm rounded-3 mb-3";
 
     // Allow deletion in demo mode or if user owns the post
-    const canDelete = isUsingDemoData || req.client_key === clientKey;
+    const canDelete = (req.client_key === clientKey);
     const deleteBtn = canDelete
       ? `<button class="btn btn-action text-danger delete-btn ms-auto" onclick="deleteRequest(${req.id})" title="Delete"><i class="bi bi-trash"></i></button>`
       : "";
@@ -178,7 +179,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <button class="vote-btn upvote" onclick="handleVote(${req.id}, 1)" title="Upvote">
           <i class="bi bi-caret-up-fill"></i>
         </button>
-        <span class="vote-count">${formatVoteCount(req.votes.score)}</span>
+        <span class="vote-count">  ${formatVoteCount(req.votes?.score ?? 0)}</span>
         <button class="vote-btn downvote" onclick="handleVote(${req.id}, -1)" title="Downvote">
           <i class="bi bi-caret-down-fill"></i>
         </button>
@@ -266,7 +267,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.error("Vote failed:", err);
       // Rollback
       requests[index] = previousState;
-      renderFeed(getCurrentSort());
+      renderFeed();
       alert("Could not save your vote. Reverted change.");
     });
   };
@@ -338,7 +339,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         text: comment.content,
         created_at: comment.created_at,
       });
-      renderFeed(getCurrentSort());
+      renderFeed();
     }
 
     const collapseEl = document.getElementById(`comments-${reqId}`);
@@ -348,6 +349,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   } catch (err) {
     alert("Failed to post comment. Please try again.");
+    console.log("Error at the comment sectino",err);
   }
 };
 
@@ -420,7 +422,7 @@ window.deleteRequest = async function (id) {
 
       if (!isUsingDemoData) {
         requests.unshift(savedRequest);
-        renderFeed(getCurrentSort());
+        renderFeed();
       }
 
       requestForm.reset();
@@ -483,7 +485,7 @@ window.deleteRequest = async function (id) {
         else sortRecentBtn.click();
       } else if (category) {
         currentCategory = category;
-        renderFeed(getCurrentSort());
+        renderFeed();
       }
 
       const nav = document.getElementById("navbarNav");
