@@ -15,7 +15,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Global State
   let requests = [];
   let currentCategory = "all";
-  let isUsingDemoData = false;
 
   // ─── API Functions ───────────────────────────────────────────────
 
