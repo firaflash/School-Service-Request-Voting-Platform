@@ -177,7 +177,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const downClass = req.votes?.userVote === -1 ? "active" : "";
 
     // allow deletion in demo mode or if user owns the post
-    const canDelete = isUsingDemoData || req.client_key === clientKey;
+    const canDelete = req.client_key === clientKey;
     const deleteBtn = canDelete
       ? `<button class="btn btn-action text-danger delete-btn ms-auto" onclick="deleteRequest(${req.id})" title="Delete"><i class="bi bi-trash"></i></button>`
       : "";
@@ -453,10 +453,9 @@ window.deleteRequest = async function (id) {
     try {
       const savedRequest = await createRequestOnServer(formData);
 
-      if (!isUsingDemoData) {
         requests.unshift(savedRequest);
         renderFeed();
-      }
+      
 
       requestForm.reset();
       bootstrap.Modal.getInstance(
